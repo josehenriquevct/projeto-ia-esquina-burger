@@ -3,6 +3,12 @@
 Sistema de estudos web (roda 100% no navegador, sem instalar nada) para quem
 está se preparando para o concurso de **Soldado da Polícia Militar de Goiás**.
 
+> **Calibrado pela prova real:** banca **Instituto AOCP**, Edital **002/2022**
+> (Soldado Combatente). A grade de matérias, os pesos, a regra de aprovação
+> (**≥ 60% dos 85 pontos + não zerar nenhuma matéria**), o estilo das questões
+> e a ordem de prioridade de estudo reproduzem a **incidência real** da prova de
+> 10/07/2022, analisada questão a questão.
+
 Construído em cima dos **métodos com comprovação científica de maior eficácia**
 para retenção de conteúdo e desempenho em provas:
 
@@ -35,12 +41,13 @@ python3 -m http.server 8000
 
 | Tela | O que faz |
 |------|-----------|
-| **Início** | Visão geral, cards pendentes e matérias do edital |
+| **Início** | Grade da prova, regra dos 60%/não zerar e matérias por prioridade |
 | **Flashcards** | Revisão espaçada com avaliação (Errei / Difícil / Bom / Fácil) |
-| **Questões** | Banco de questões com gabarito comentado por alternativa |
-| **Simulado** | Prova cronometrada (5/10/20 questões) com desempenho por matéria |
+| **Questões** | Banco no estilo AOCP com gabarito comentado por alternativa |
+| **Simulado** | Prova cronometrada montada na **proporção real** da grade; aplica a regra dos 60% + não zerar |
 | **Desempenho** | Estatísticas, pontos fracos e histórico de simulados |
-| **Plano** | Rotina de estudos e ciclo semanal recomendado |
+| **Plano** | Prioridade por densidade (pontos/hora) e alocação de tempo |
+| **Prova & TAF** | Estrutura da prova, redação, tabelas do TAF e checklist de preparação |
 
 Seu progresso fica salvo automaticamente no navegador (localStorage). Dá para
 **exportar** o progresso em JSON na aba Desempenho.
