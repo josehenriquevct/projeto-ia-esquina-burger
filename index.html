@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estudo PMGO — Preparação para Soldado</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brasao">🛡️</span>
+      <div>
+        <strong>ESTUDO PMGO</strong>
+        <small>Preparação · Soldado</small>
+      </div>
+    </div>
+    <nav class="nav">
+      <button data-rota="inicio" class="ativo">Início</button>
+      <button data-rota="flashcards">Flashcards</button>
+      <button data-rota="questoes">Questões</button>
+      <button data-rota="simulado">Simulado</button>
+      <button data-rota="desempenho">Desempenho</button>
+      <button data-rota="plano">Plano</button>
+    </nav>
+  </header>
+
+  <main id="app" class="conteudo"><!-- renderizado via JS --></main>
+
+  <footer class="rodape">
+    Sistema de estudos independente · não é material oficial da PMGO ·
+    sempre confira o edital vigente.
+  </footer>
+
+  <!-- ordem importa: dados → motores → app -->
+  <script src="js/data.js"></script>
+  <script src="js/srs.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
