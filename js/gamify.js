@@ -97,6 +97,7 @@ const Gamify = {
   _default() {
     return {
       xp: 0,
+      nome: "",          // nome/guerra do aluno
       streak: { count: 0, ultimoDia: null },
       dia: { data: null, xp: 0, freezeAward: false },
       metaXp: 50,        // meta diária escolhida
@@ -120,9 +121,12 @@ const Gamify = {
     if (d.gamify.metaXp == null) d.gamify.metaXp = def.metaXp;
     if (d.gamify.onboarded == null) d.gamify.onboarded = def.onboarded;
     if (d.gamify.freeze == null) d.gamify.freeze = def.freeze;
+    if (d.gamify.nome == null) d.gamify.nome = def.nome;
     if (!d.gamify.dia) d.gamify.dia = def.dia;
     return d.gamify;
   },
+  nome() { return this.estado().nome || ""; },
+  definirNome(n) { const g = this.estado(); g.nome = (n || "").slice(0, 24); this._salvar(); },
   _salvar() { Store.salvar(); },
 
   /* ---- Patente / nível ---- */
@@ -227,9 +231,10 @@ const Gamify = {
   mascoteFala() {
     const g = this.estado();
     const meta = this.metaDiaria();
-    if (meta.batida) return `Meta batida hoje! Ofensiva de ${g.streak.count} dia(s). Orgulho da tropa! 🔥`;
-    if (g.streak.count >= 3) return `${g.streak.count} dias seguidos! Não quebre a ofensiva — bora bater a meta.`;
-    if (g.xp === 0) return "Bem-vindo, recruta! Responda sua primeira questão e comece a subir de patente.";
+    const nome = g.nome ? ", " + g.nome.split(" ")[0] : "";
+    if (meta.batida) return `Meta batida hoje${nome}! Ofensiva de ${g.streak.count} dia(s). Orgulho da tropa! 🔥`;
+    if (g.streak.count >= 3) return `${g.streak.count} dias seguidos${nome}! Não quebre a ofensiva — bora bater a meta.`;
+    if (g.xp === 0) return `Bem-vindo${nome || ", recruta"}! Responda sua primeira questão e comece a subir de patente.`;
     return this.fraseDoDia();
   },
 

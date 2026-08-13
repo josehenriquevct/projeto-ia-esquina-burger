@@ -550,6 +550,28 @@ body {
   border-radius: 22px; font-size: 13px; box-shadow: var(--sombra); animation: entraToast .3s; }
 
 /* =====================================================================
+   NOME DO ALUNO + BACKUP DE PROGRESSO
+   ===================================================================== */
+.ob-campo { text-align: left; margin: 4px 0 16px; }
+.ob-campo label { display: block; font-size: 13px; color: var(--texto-suave); margin-bottom: 6px; }
+.ob-campo input { width: 100%; background: var(--azul-800); color: var(--texto); border: 2px solid var(--borda);
+  border-radius: 12px; padding: 13px 14px; font-size: 16px; }
+.ob-campo input:focus { border-color: var(--dourado); outline: none; }
+.ob-meta-titulo { color: var(--texto-suave); margin-bottom: 10px; }
+.ob-meta-titulo small { opacity: .8; }
+
+.perfil-nome-grande { font-size: 26px; font-weight: 800; color: var(--texto); margin-top: 4px; }
+.editar-nome { background: none; border: none; cursor: pointer; font-size: 16px; opacity: .7; }
+.editar-nome:hover { opacity: 1; }
+.perfil-hero .perfil-patente { font-size: 14px; color: var(--dourado-claro); }
+
+.progresso-box { background: var(--card-bg); border: 1px solid var(--borda); border-radius: 14px; padding: 16px 18px; }
+.progresso-box p { font-size: 14px; color: var(--texto-suave); margin-bottom: 12px; }
+.progresso-box strong { color: var(--texto); }
+.progresso-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+.progresso-status { font-size: 13px; color: var(--dourado-claro); margin-top: 10px; min-height: 18px; }
+
+/* =====================================================================
    ACESSIBILIDADE E POLIMENTO
    ===================================================================== */
 /* Foco visível por teclado */

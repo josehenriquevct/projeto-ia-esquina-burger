@@ -1,7 +1,7 @@
 /* Service Worker — Estudo PMGO (PWA offline)
    Cacheia os arquivos do app para funcionar sem internet.
    Ao alterar arquivos, suba a versão do CACHE para forçar atualização. */
-const CACHE = "pmgo-v1";
+const CACHE = "pmgo-v2";
 const ASSETS = [
   "./",
   "./index.html",

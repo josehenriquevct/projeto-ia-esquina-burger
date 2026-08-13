@@ -115,7 +115,10 @@ const Store = {
 
   importar(json) {
     try {
-      this._dados = JSON.parse(json);
+      const obj = JSON.parse(json);
+      if (!obj || typeof obj !== "object" ||
+          (!("gamify" in obj) && !("simulados" in obj) && !("cards" in obj))) return false;
+      this._dados = obj;
       this.salvar();
       return true;
     } catch (e) {

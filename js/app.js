@@ -22,8 +22,12 @@ const App = {
       <div class="onboarding-card">
         <div class="ob-mascote">${MASCOTE.emoji}</div>
         <h2>Bem-vindo, futuro Soldado!</h2>
-        <p>Eu sou o <strong>${MASCOTE.nome}</strong> e vou te acompanhar até a farda. 🎖️<br>
-        Qual vai ser sua <strong>meta diária</strong>? (dá pra mudar depois no Perfil)</p>
+        <p>Eu sou o <strong>${MASCOTE.nome}</strong> e vou te acompanhar até a farda. 🎖️</p>
+        <div class="ob-campo">
+          <label for="ob-nome">Como quer ser chamado(a)?</label>
+          <input id="ob-nome" type="text" maxlength="24" autocomplete="name" placeholder="Seu nome ou nome de guerra" />
+        </div>
+        <p class="ob-meta-titulo">Escolha sua <strong>meta diária</strong> <small>(dá pra mudar depois)</small></p>
         <div class="ob-metas">
           ${META_OPCOES.map((m) => `
             <button class="ob-meta ${m.id === "regular" ? "sugerida" : ""}" data-xp="${m.xp}">
@@ -34,7 +38,10 @@ const App = {
         </div>
       </div>`;
     document.body.appendChild(ov);
+    setTimeout(() => { const i = document.getElementById("ob-nome"); if (i) i.focus(); }, 100);
     ov.querySelectorAll(".ob-meta").forEach((b) => b.addEventListener("click", () => {
+      const nome = (document.getElementById("ob-nome").value || "").trim();
+      Gamify.definirNome(nome);
       Gamify.definirMeta(parseInt(b.dataset.xp, 10));
       Som.levelup(); Confete.disparar(120);
       ov.remove();
@@ -268,6 +275,40 @@ const App = {
     let n = 0;
     Object.values(AULAS).forEach((arr) => arr.forEach((a) => { if (Store.aulaInfo(a.id).dominada) n++; }));
     return n;
+  },
+
+  _esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  },
+
+  _salvarBackup() {
+    const nome = (Gamify.nome() || "aluno").replace(/[^a-zA-Z0-9_-]+/g, "_") || "aluno";
+    const blob = new Blob([Store.exportar()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `progresso-pmgo-${nome}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    const st = document.getElementById("backup-status");
+    if (st) st.innerHTML = "✅ Backup salvo! Guarde o arquivo — é a sua garantia de não perder o progresso.";
+  },
+
+  _restaurarBackup(file) {
+    const st = document.getElementById("backup-status");
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (Store.importar(reader.result)) {
+        Som.levelup(); Confete.disparar(120);
+        if (st) st.innerHTML = "✅ Progresso restaurado com sucesso!";
+        setTimeout(() => { this.renderHud(); this.telaPerfil(); }, 400);
+      } else {
+        Som.erro();
+        if (st) st.innerHTML = "❌ Arquivo inválido. Selecione um backup gerado pelo Estudo PMGO.";
+      }
+    };
+    reader.onerror = () => { if (st) st.innerHTML = "❌ Não foi possível ler o arquivo."; };
+    reader.readAsText(file);
   },
 
   /* ================================================================== */
@@ -1173,9 +1214,12 @@ const App = {
     const desbloqueadas = Object.keys(g.conquistas).length;
     const acerto = g.stats.respondidas ? Math.round((g.stats.acertos / g.stats.respondidas) * 100) : 0;
 
+    const nome = Gamify.nome();
     this.el.innerHTML = `
       <div class="perfil-hero">
         <div class="perfil-brasao">${p.atual.simbolo}</div>
+        <div class="perfil-nome-grande">${nome ? this._esc(nome) : "Defina seu nome"}
+          <button class="editar-nome" id="edit-nome" title="Editar nome">✏️</button></div>
         <div class="perfil-patente">${p.atual.nome}</div>
         <div class="perfil-xp">${g.xp} XP total</div>
         <div class="perfil-prog">
@@ -1254,8 +1298,22 @@ const App = {
           </div>`).join("")}
       </div>
 
-      <div class="acoes-materia">
+      <h2 class="secao-titulo">💾 Meu progresso</h2>
+      <div class="progresso-box">
+        <p>Seu progresso (provas, aulas, XP, ofensiva) é <strong>salvo automaticamente</strong> neste
+        navegador. Para não perder ao trocar de aparelho ou limpar o histórico, guarde um
+        <strong>backup</strong> e restaure quando quiser.</p>
+        <div class="progresso-acoes">
+          <button class="btn primario" id="salvar-backup">⬇️ Salvar backup</button>
+          <button class="btn" id="restaurar-backup">⬆️ Restaurar backup</button>
+          <input type="file" id="arquivo-backup" accept="application/json,.json" hidden />
+        </div>
+        <div class="progresso-status" id="backup-status"></div>
+      </div>
+
+      <div class="acoes-materia" style="margin-top:20px">
         <button class="btn" id="toggle-som">${Gamify.somAtivo() ? "🔊 Som ligado" : "🔇 Som desligado"}</button>
+        <button class="btn perigo" id="zerar-tudo">🗑 Zerar tudo</button>
       </div>
     `;
     document.getElementById("toggle-som").addEventListener("click", (e) => {
@@ -1263,6 +1321,22 @@ const App = {
       e.target.textContent = on ? "🔊 Som ligado" : "🔇 Som desligado";
       if (on) Som.acerto();
       this.renderHud();
+    });
+    document.getElementById("edit-nome").addEventListener("click", () => {
+      const atual = Gamify.nome();
+      const n = window.prompt("Como quer ser chamado(a)?", atual);
+      if (n !== null) { Gamify.definirNome(n.trim()); Som.acerto(); this.telaPerfil(); }
+    });
+    document.getElementById("salvar-backup").addEventListener("click", () => this._salvarBackup());
+    const inputBk = document.getElementById("arquivo-backup");
+    document.getElementById("restaurar-backup").addEventListener("click", () => inputBk.click());
+    inputBk.addEventListener("change", (e) => this._restaurarBackup(e.target.files[0]));
+    document.getElementById("zerar-tudo").addEventListener("click", () => {
+      if (window.confirm("Isso apaga TODO o seu progresso (provas, XP, ofensiva). Tem certeza?\nDica: salve um backup antes.")) {
+        Store.resetar();
+        try { const d = Store.carregar(); d.gamify = Gamify._default(); Store.salvar(); } catch (err) {}
+        location.reload ? location.reload() : this.navegar("inicio");
+      }
     });
     const pd = document.getElementById("perfil-desafio");
     if (pd) pd.addEventListener("click", () => { this.materiaSelecionada = Gamify.desafioHoje().materiaId; this.navegar("questoes"); });
