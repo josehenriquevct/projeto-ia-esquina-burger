@@ -571,6 +571,23 @@ body {
 .progresso-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
 .progresso-status { font-size: 13px; color: var(--dourado-claro); margin-top: 10px; min-height: 18px; }
 
+/* Conta na nuvem (login) */
+.conta-box { background: var(--card-bg); border: 1px solid var(--borda); border-radius: 14px; padding: 16px 18px; }
+.conta-box.logado { border-color: var(--verde); background: rgba(34,197,94,.07); }
+.conta-box p { font-size: 14px; color: var(--texto-suave); margin-bottom: 12px; }
+.conta-box strong { color: var(--texto); }
+.conta-box input { width: 100%; background: var(--azul-800); color: var(--texto); border: 2px solid var(--borda);
+  border-radius: 12px; padding: 12px 14px; font-size: 16px; margin-bottom: 10px; }
+.conta-box input:focus { border-color: var(--dourado); outline: none; }
+.conta-acoes { display: flex; gap: 10px; }
+.conta-acoes .btn { flex: 1; }
+.conta-google { width: 100%; margin-top: 10px; }
+.conta-link { background: none; border: none; color: var(--texto-suave); cursor: pointer; font-size: 13px;
+  text-decoration: underline; margin-top: 10px; padding: 4px; }
+.conta-status { font-size: 13px; margin-top: 10px; min-height: 18px; }
+.conta-status.ok { color: #7ee2a0; }
+.conta-status.erro { color: #ff9d9d; }
+
 /* =====================================================================
    ACESSIBILIDADE E POLIMENTO
    ===================================================================== */

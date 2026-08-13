@@ -10,6 +10,14 @@ const App = {
   init() {
     this.el = document.getElementById("app");
     this.bindNav();
+    // nuvem: ao entrar/sair, atualiza HUD e a tela de Perfil (se aberta)
+    if (typeof Cloud !== "undefined") {
+      Cloud.init(() => {
+        this.renderHud();
+        if (this._rota === "perfil") this.telaPerfil();
+        else if (this._rota === "inicio") this.telaInicio();
+      });
+    }
     if (Gamify.precisaOnboarding()) this.onboarding();
     else this.navegar("inicio");
   },
@@ -72,6 +80,7 @@ const App = {
       prova: () => this.telaProva(),
       perfil: () => this.telaPerfil(),
     };
+    this._rota = rota;
     (telas[rota] || telas.inicio)();
     this.renderHud();
     this.renderBottomNav(rota);
@@ -1216,6 +1225,9 @@ const App = {
 
     const nome = Gamify.nome();
     this.el.innerHTML = `
+      <h2 class="secao-titulo" style="margin-top:4px">☁️ Conta</h2>
+      ${this._cardConta()}
+
       <div class="perfil-hero">
         <div class="perfil-brasao">${p.atual.simbolo}</div>
         <div class="perfil-nome-grande">${nome ? this._esc(nome) : "Defina seu nome"}
@@ -1327,6 +1339,7 @@ const App = {
       const n = window.prompt("Como quer ser chamado(a)?", atual);
       if (n !== null) { Gamify.definirNome(n.trim()); Som.acerto(); this.telaPerfil(); }
     });
+    this._bindConta();
     document.getElementById("salvar-backup").addEventListener("click", () => this._salvarBackup());
     const inputBk = document.getElementById("arquivo-backup");
     document.getElementById("restaurar-backup").addEventListener("click", () => inputBk.click());
@@ -1372,6 +1385,71 @@ const App = {
       <div class="desafio-prog">${des.progresso}/${des.alvo}</div>
       ${des.feito ? "" : `<button class="btn primario btn-pequeno" id="perfil-desafio">Ir agora →</button>`}
     </div>`;
+  },
+
+  _cardConta() {
+    const ok = (typeof Cloud !== "undefined") && Cloud.disponivel();
+    if (!ok) {
+      return `<div class="conta-box">
+        <p>☁️ O login na nuvem ainda <strong>não foi configurado</strong> neste app.
+        Enquanto isso, seu progresso fica salvo neste aparelho e você pode usar o
+        <strong>backup</strong> abaixo. Assim que o Firebase estiver configurado, o login aparece aqui.</p>
+      </div>`;
+    }
+    const u = Cloud.usuario();
+    if (u) {
+      return `<div class="conta-box logado">
+        <p>✅ Conectado como <strong>${this._esc(u.email || "conta Google")}</strong>.<br>
+        Seu progresso está <strong>sincronizado na nuvem</strong> — não se perde mesmo trocando de aparelho.</p>
+        <button class="btn" id="conta-sair">Sair</button>
+      </div>`;
+    }
+    return `<div class="conta-box">
+      <p>Entre para salvar seu progresso na nuvem e <strong>nunca perder</strong> — funciona em qualquer aparelho.</p>
+      <input id="conta-email" type="email" placeholder="seu@email.com" autocomplete="email" />
+      <input id="conta-senha" type="password" placeholder="senha (mín. 6 caracteres)" autocomplete="current-password" />
+      <div class="conta-acoes">
+        <button class="btn primario" id="conta-entrar">Entrar</button>
+        <button class="btn" id="conta-criar">Criar conta</button>
+      </div>
+      <button class="btn conta-google" id="conta-google">🔵 Entrar com Google</button>
+      <button class="conta-link" id="conta-esqueci">Esqueci a senha</button>
+      <div class="conta-status" id="conta-status"></div>
+    </div>`;
+  },
+
+  _bindConta() {
+    const ok = (typeof Cloud !== "undefined") && Cloud.disponivel();
+    if (!ok) return;
+    const status = () => document.getElementById("conta-status");
+    const msg = (t, erro) => { const s = status(); if (s) { s.textContent = t; s.className = "conta-status" + (erro ? " erro" : " ok"); } };
+    const val = (id) => (document.getElementById(id) || {}).value || "";
+    const sair = document.getElementById("conta-sair");
+    if (sair) sair.addEventListener("click", () => { Cloud.sair().then(() => this.telaPerfil()); });
+    const entrar = document.getElementById("conta-entrar");
+    if (entrar) entrar.addEventListener("click", () => {
+      msg("Entrando...");
+      Cloud.entrar(val("conta-email").trim(), val("conta-senha"))
+        .then(() => { Som.levelup(); }).catch((e) => msg(Cloud.erroPt(e), true));
+    });
+    const criar = document.getElementById("conta-criar");
+    if (criar) criar.addEventListener("click", () => {
+      msg("Criando conta...");
+      Cloud.cadastrar(val("conta-email").trim(), val("conta-senha"))
+        .then(() => { Som.conquista(); Confete.disparar(80); }).catch((e) => msg(Cloud.erroPt(e), true));
+    });
+    const google = document.getElementById("conta-google");
+    if (google) google.addEventListener("click", () => {
+      msg("Abrindo Google...");
+      Cloud.entrarGoogle().then(() => { Som.levelup(); }).catch((e) => msg(Cloud.erroPt(e), true));
+    });
+    const esq = document.getElementById("conta-esqueci");
+    if (esq) esq.addEventListener("click", () => {
+      const email = val("conta-email").trim();
+      if (!email) { msg("Digite seu e-mail acima primeiro.", true); return; }
+      Cloud.redefinirSenha(email).then(() => msg("Enviei um e-mail para redefinir a senha."))
+        .catch((e) => msg(Cloud.erroPt(e), true));
+    });
   },
 
   _cardDesafioSemana() {

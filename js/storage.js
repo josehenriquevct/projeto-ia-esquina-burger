@@ -39,6 +39,13 @@ const Store = {
     } catch (e) {
       console.warn("Não foi possível salvar o progresso:", e);
     }
+    // envia para a nuvem, se houver login (não bloqueia a UI)
+    if (typeof Cloud !== "undefined" && Cloud.agendarSync) { try { Cloud.agendarSync(); } catch (e) {} }
+  },
+
+  importarObjeto(obj) {
+    if (obj && typeof obj === "object") { this._dados = obj; this.salvar(); return true; }
+    return false;
   },
 
   // ---- Flashcards ----
