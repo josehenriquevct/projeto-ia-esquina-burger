@@ -27,6 +27,7 @@ const App = {
       inicio: () => this.telaInicio(),
       flashcards: () => this.telaFlashcards(),
       questoes: () => this.telaQuestoes(),
+      resumos: () => this.telaResumos(),
       simulado: () => this.telaSimulado(),
       desempenho: () => this.telaDesempenho(),
       plano: () => this.telaPlano(),
@@ -132,11 +133,13 @@ const App = {
       </ul>
       <div class="acoes-materia">
         <button class="btn primario" id="praticar">Praticar questões (${nQ})</button>
+        <button class="btn" id="resumo">📖 Ver resumo</button>
         <button class="btn" id="revisar">Revisar flashcards</button>
       </div>
     `;
     document.getElementById("voltar").addEventListener("click", () => this.navegar("inicio"));
     document.getElementById("praticar").addEventListener("click", () => { this.materiaSelecionada = id; this.navegar("questoes"); });
+    document.getElementById("resumo").addEventListener("click", () => { this.materiaSelecionada = id; this.navegar("resumos"); });
     document.getElementById("revisar").addEventListener("click", () => { this.materiaSelecionada = id; this.navegar("flashcards"); });
   },
 
@@ -610,6 +613,57 @@ const App = {
       <thead><tr>${t.colunas.map((c) => `<th>${c}</th>`).join("")}</tr></thead>
       <tbody>${t.linhas.map((l) => `<tr>${l.map((v) => `<td>${v}</td>`).join("")}</tr>`).join("")}</tbody>
     </table></div>`;
+  },
+
+  /* ================================================================== */
+  /* RESUMOS — teoria por matéria                                        */
+  /* ================================================================== */
+  telaResumos() {
+    const filtro = this.materiaSelecionada;
+    const ordenadas = [...SUBJECTS].sort((a, b) => a.prioridade - b.prioridade || b.pontos - a.pontos)
+      .filter((s) => !filtro || s.id === filtro);
+    this.el.innerHTML = `
+      <div class="topo-tela"><h1>📖 Resumos</h1>${this._seletorMateria()}</div>
+      <p class="sub">Teoria condensada no que a banca AOCP realmente cobra. Use para revisar antes
+      das questões. Ordenado por prioridade de estudo.</p>
+      <div id="area-resumos">
+        ${ordenadas.map((s) => this._blocoResumo(s)).join("")}
+      </div>`;
+    this._bindSeletorMateria(() => this.telaResumos());
+    this.el.querySelectorAll(".resumo-cab").forEach((cab) => {
+      cab.addEventListener("click", () => {
+        const corpo = cab.nextElementSibling;
+        corpo.classList.toggle("oculto");
+        cab.querySelector(".resumo-seta").textContent = corpo.classList.contains("oculto") ? "▸" : "▾";
+      });
+    });
+    this.el.querySelectorAll("[data-praticar]").forEach((b) =>
+      b.addEventListener("click", (e) => { e.stopPropagation(); this.materiaSelecionada = b.dataset.praticar; this.navegar("questoes"); }));
+  },
+
+  _blocoResumo(s) {
+    const secoes = (typeof RESUMOS !== "undefined" && RESUMOS[s.id]) || [];
+    const nQ = QUESTIONS.filter((q) => q.materia === s.id).length;
+    const aberto = this.materiaSelecionada === s.id; // aberto se filtrado
+    return `
+      <div class="resumo-card" style="--cor:${s.cor}">
+        <div class="resumo-cab">
+          <div>
+            <span class="resumo-seta">${aberto ? "▾" : "▸"}</span>
+            <strong>${s.nome}</strong>
+            <span class="materia-peso prio-${s.prioridade}">P${s.prioridade}</span>
+          </div>
+          <span class="resumo-pts">${s.pontos} pts</span>
+        </div>
+        <div class="resumo-corpo ${aberto ? "" : "oculto"}">
+          ${secoes.length ? secoes.map((sec) => `
+            <div class="resumo-secao">
+              <h4>${sec.titulo}</h4>
+              <ul>${sec.pontos.map((p) => `<li>${p}</li>`).join("")}</ul>
+            </div>`).join("") : '<p class="sub">Resumo em construção para esta matéria.</p>'}
+          <button class="btn primario btn-pequeno" data-praticar="${s.id}">Praticar ${nQ} questões desta matéria →</button>
+        </div>
+      </div>`;
   },
 
   /* ================================================================== */

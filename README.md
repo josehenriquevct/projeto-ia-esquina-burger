@@ -42,12 +42,20 @@ python3 -m http.server 8000
 | Tela | O que faz |
 |------|-----------|
 | **Início** | Grade da prova, regra dos 60%/não zerar e matérias por prioridade |
-| **Flashcards** | Revisão espaçada com avaliação (Errei / Difícil / Bom / Fácil) |
-| **Questões** | Banco no estilo AOCP com gabarito comentado por alternativa |
+| **Flashcards** | Revisão espaçada (52 cards) com avaliação (Errei / Difícil / Bom / Fácil) |
+| **Questões** | Banco de **140 questões** no estilo AOCP com gabarito comentado por alternativa |
+| **Resumos** | Teoria condensada por matéria (acordeão), no recorte que a banca cobra |
 | **Simulado** | Prova cronometrada montada na **proporção real** da grade; aplica a regra dos 60% + não zerar |
 | **Desempenho** | Estatísticas, pontos fracos e histórico de simulados |
 | **Plano** | Prioridade por densidade (pontos/hora) e alocação de tempo |
 | **Prova & TAF** | Estrutura da prova, redação, tabelas do TAF e checklist de preparação |
+
+### Conteúdo incluído
+
+- **140 questões** distribuídas pelas 9 matérias (36 fáceis, 72 médias, 32 difíceis), todas com comentário
+- **52 flashcards** de alta densidade
+- **Resumos de teoria** para todas as 9 matérias
+- Estrutura em arquivos: `js/data.js` (config), `js/questions.js` (banco), `js/resumos.js` (teoria)
 
 Seu progresso fica salvo automaticamente no navegador (localStorage). Dá para
 **exportar** o progresso em JSON na aba Desempenho.
@@ -57,7 +65,9 @@ Seu progresso fica salvo automaticamente no navegador (localStorage). Dá para
 ```
 index.html          → página e navegação
 css/styles.css      → tema visual (azul-marinho + dourado)
-js/data.js          → matérias do edital, banco de questões e flashcards
+js/data.js          → matérias, blueprint da prova, TAF, redação, flashcards
+js/questions.js     → banco de 140 questões (estilo AOCP)
+js/resumos.js       → resumos de teoria por matéria
 js/srs.js           → motor de revisão espaçada (SM-2)
 js/storage.js       → persistência do progresso (localStorage)
 js/app.js           → interface e telas
@@ -65,9 +75,12 @@ js/app.js           → interface e telas
 
 ## Como adicionar mais conteúdo
 
-Todo o conteúdo fica em `js/data.js`. Para incluir questões novas, adicione
-objetos ao array `QUESTIONS`; para flashcards, ao array `FLASHCARDS`. Os
-comentários no arquivo explicam o formato de cada campo.
+- **Questões:** adicione objetos ao array `QUESTIONS` em `js/questions.js`
+  (campos: `id`, `materia`, `nivel`, `enunciado`, `alternativas[5]`, `correta`, `explicacao`).
+- **Flashcards:** adicione ao array `FLASHCARDS` em `js/data.js`.
+- **Resumos:** edite o objeto `RESUMOS` em `js/resumos.js` (por `id` de matéria).
+
+Os comentários em cada arquivo explicam o formato dos campos.
 
 ## ⚠️ Importante
 

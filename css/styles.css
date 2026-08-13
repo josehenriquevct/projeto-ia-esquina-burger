@@ -114,6 +114,20 @@ body {
 .tabela.compacta th, .tabela.compacta td { padding: 8px 10px; font-size: 13px; }
 .tabela-scroll { overflow-x: auto; }
 .tr-total td { background: var(--azul-700); }
+
+/* resumos (acordeão) */
+.resumo-card { background: var(--card-bg); border: 1px solid var(--borda); border-left: 4px solid var(--cor); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+.resumo-cab { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; user-select: none; }
+.resumo-cab:hover { background: var(--azul-700); }
+.resumo-cab strong { margin: 0 8px; }
+.resumo-seta { color: var(--cor); font-size: 12px; }
+.resumo-pts { font-size: 12px; color: var(--dourado-claro); }
+.resumo-corpo { padding: 4px 18px 18px; }
+.resumo-secao { margin-top: 14px; }
+.resumo-secao h4 { color: var(--dourado-claro); font-size: 14px; margin-bottom: 6px; }
+.resumo-secao ul { margin-left: 18px; display: grid; gap: 6px; }
+.resumo-secao li { font-size: 14px; color: var(--texto); }
+.btn-pequeno { margin-top: 16px; font-size: 13px; padding: 8px 14px; }
 .materia-rodape { font-size: 12px; color: var(--texto-suave); margin-top: 6px; }
 .barra { height: 7px; background: var(--azul-800); border-radius: 20px; overflow: hidden; margin: 8px 0; }
 .barra-fill { height: 100%; background: linear-gradient(90deg, var(--cor, var(--dourado)), var(--dourado-claro)); border-radius: 20px; transition: width .4s; }
