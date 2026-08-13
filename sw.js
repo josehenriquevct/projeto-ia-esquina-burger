@@ -1,7 +1,7 @@
 /* Service Worker — Estudo PMGO (PWA offline)
    Cacheia os arquivos do app para funcionar sem internet.
    Ao alterar arquivos, suba a versão do CACHE para forçar atualização. */
-const CACHE = "pmgo-v2";
+const CACHE = "pmgo-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,9 +15,11 @@ const ASSETS = [
   "./js/gamify.js",
   "./js/app.js",
   "./manifest.webmanifest",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-180.png",
+  "./icons/app-icon-192.png",
+  "./icons/app-icon-512.png",
+  "./icons/app-icon-180.png",
+  "./icons/app-icon-mask-192.png",
+  "./icons/app-icon-mask-512.png",
 ];
 
 self.addEventListener("install", (e) => {
