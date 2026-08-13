@@ -160,7 +160,6 @@ const Gamify = {
       } else if (gap >= 2 && g.freeze > 0) {
         g.freeze -= 1;            // um protetor cobre o(s) dia(s) perdido(s)
         g.streak.count += 1;
-        g._freezeUsado = true;    // sinal p/ UI (não persistido de propósito)
       } else {
         g.streak.count = 1;       // ofensiva quebrou
       }
@@ -176,7 +175,7 @@ const Gamify = {
 
   _diaAtual(g) {
     const hoje = _hoje();
-    if (g.dia.data !== hoje) g.dia = { data: hoje, xp: 0 };
+    if (!g.dia || g.dia.data !== hoje) g.dia = { data: hoje, xp: 0, freezeAward: false };
     return g.dia;
   },
 
@@ -290,7 +289,8 @@ const Gamify = {
     if (des.progresso >= des.alvo) {
       des.feito = true; this._salvar();
       const lvl = this.addXP(des.recompensa);
-      return { concluido: true, recompensa: des.recompensa, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente };
+      return { concluido: true, recompensa: des.recompensa, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente,
+        metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze, semanaConcluida: lvl.semanaConcluida, bonusSemana: lvl.bonusSemana };
     }
     this._salvar();
     return { concluido: false, progresso: des.progresso, alvo: des.alvo };
@@ -317,7 +317,13 @@ const Gamify = {
     let desafio = null;
     if (acertou && materiaId) {
       desafio = this.registrarDesafio(materiaId);
-      if (desafio && desafio.concluido) novas.push(...this.checarConquistas());
+      if (desafio && desafio.concluido) {
+        novas.push(...this.checarConquistas());
+        // propaga eventos gerados pelo BÔNUS do desafio (podem cruzar meta/semana/nível)
+        if (desafio.metaBatidaAgora) { lvl.metaBatidaAgora = true; lvl.ganhoFreeze = lvl.ganhoFreeze || desafio.ganhoFreeze; }
+        if (desafio.semanaConcluida) { lvl.semanaConcluida = true; lvl.bonusSemana = desafio.bonusSemana; }
+        if (desafio.subiuNivel) { lvl.subiuNivel = true; lvl.novaPatente = desafio.novaPatente; }
+      }
     }
     return { xp, combo: this.combo, acertou, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, desafio, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze, semanaConcluida: lvl.semanaConcluida, bonusSemana: lvl.bonusSemana };
   },
