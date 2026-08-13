@@ -54,7 +54,7 @@ const Cloud = {
     if (!this._db) return;
     this._sincronizando = true;
     try {
-      const ref = this._db.collection("usuarios").doc(u.uid);
+      const ref = this._db.collection("pmgo_usuarios").doc(u.uid);
       const snap = await ref.get();
       const local = Store.carregar();
       let escolhido = local;
@@ -84,7 +84,7 @@ const Cloud = {
     try {
       const d = Store.carregar();
       d._updatedAt = Date.now();
-      await this._db.collection("usuarios").doc(this._user.uid)
+      await this._db.collection("pmgo_usuarios").doc(this._user.uid)
         .set({ progresso: JSON.stringify(d), email: this._user.email || null, atualizadoEm: Date.now() }, { merge: true });
     } catch (e) { /* offline: tentará no próximo salvamento */ }
   },

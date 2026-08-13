@@ -20,7 +20,7 @@ app funciona 100% local (o progresso fica salvo no aparelho + backup manual).
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
-       match /usuarios/{uid} {
+       match /pmgo_usuarios/{uid} {
          allow read, write: if request.auth != null && request.auth.uid == uid;
        }
      }
