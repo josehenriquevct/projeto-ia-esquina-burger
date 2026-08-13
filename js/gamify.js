@@ -26,6 +26,14 @@ const PATENTES = [
 
 const META_DIARIA_XP = 50;
 
+/* Metas diárias escolhíveis (estilo Duolingo: Leve/Regular/Sério/Intenso) */
+const META_OPCOES = [
+  { id: "leve", nome: "Leve", xp: 20, desc: "~5 min/dia" },
+  { id: "regular", nome: "Regular", xp: 50, desc: "~10 min/dia" },
+  { id: "serio", nome: "Sério", xp: 100, desc: "~20 min/dia" },
+  { id: "intenso", nome: "Intenso", xp: 200, desc: "~40 min/dia" },
+];
+
 /* ---- Mascote e frases motivacionais -------------------------------------- */
 const MASCOTE = { nome: "Sgt. Coruja", emoji: "🦉" };
 
@@ -90,7 +98,10 @@ const Gamify = {
     return {
       xp: 0,
       streak: { count: 0, ultimoDia: null },
-      dia: { data: null, xp: 0 },
+      dia: { data: null, xp: 0, freezeAward: false },
+      metaXp: 50,        // meta diária escolhida
+      onboarded: false,  // já passou pela tela de boas-vindas?
+      freeze: 0,         // protetores de ofensiva disponíveis
       conquistas: {}, // id -> timestamp
       stats: { respondidas: 0, acertos: 0, flashcards: 0, simulados: 0, melhorCombo: 0, notaMax: 0, passouSimulado: false },
       historico: {},   // 'YYYY-MM-DD' -> xp do dia
@@ -102,8 +113,13 @@ const Gamify = {
   estado() {
     const d = Store.carregar();
     if (!d.gamify) d.gamify = this._default();
-    // proteção contra estados antigos
-    d.gamify.stats = Object.assign(this._default().stats, d.gamify.stats || {});
+    // proteção contra estados antigos (backfill de campos novos)
+    const def = this._default();
+    d.gamify.stats = Object.assign(def.stats, d.gamify.stats || {});
+    if (d.gamify.metaXp == null) d.gamify.metaXp = def.metaXp;
+    if (d.gamify.onboarded == null) d.gamify.onboarded = def.onboarded;
+    if (d.gamify.freeze == null) d.gamify.freeze = def.freeze;
+    if (!d.gamify.dia) d.gamify.dia = def.dia;
     return d.gamify;
   },
   _salvar() { Store.salvar(); },
@@ -124,15 +140,37 @@ const Gamify = {
     return { atual, prox, nivel, progresso, faltam };
   },
 
-  /* ---- Ofensiva (streak) diária ---- */
+  /* ---- Onboarding e meta ---- */
+  precisaOnboarding() { return !this.estado().onboarded; },
+  definirMeta(xp) { const g = this.estado(); g.metaXp = xp; g.onboarded = true; this._salvar(); },
+  metaAtual() { return this.estado().metaXp || META_DIARIA_XP; },
+
+  /* ---- Ofensiva (streak) diária, com proteção (freeze) ---- */
   checkin() {
     const g = this.estado();
     const hoje = _hoje();
     if (g.streak.ultimoDia === hoje) return; // já contou hoje
-    if (g.streak.ultimoDia === _ontem()) g.streak.count += 1;
-    else g.streak.count = 1;
+    if (g.streak.ultimoDia == null) {
+      g.streak.count = 1;
+    } else {
+      const gap = this._diasEntre(g.streak.ultimoDia, hoje);
+      if (gap === 1) {
+        g.streak.count += 1;
+      } else if (gap >= 2 && g.freeze > 0) {
+        g.freeze -= 1;            // um protetor cobre o(s) dia(s) perdido(s)
+        g.streak.count += 1;
+        g._freezeUsado = true;    // sinal p/ UI (não persistido de propósito)
+      } else {
+        g.streak.count = 1;       // ofensiva quebrou
+      }
+    }
     g.streak.ultimoDia = hoje;
     this._salvar();
+  },
+  _diasEntre(aStr, bStr) {
+    const a = new Date(aStr + "T00:00:00");
+    const b = new Date(bStr + "T00:00:00");
+    return Math.round((b - a) / 86400000);
   },
 
   _diaAtual(g) {
@@ -153,9 +191,17 @@ const Gamify = {
     g.historico[hoje] = (g.historico[hoje] || 0) + n;
     const chaves = Object.keys(g.historico).sort();
     while (chaves.length > 30) { delete g.historico[chaves.shift()]; }
+    // meta diária + prêmio de proteção de ofensiva (freeze)
+    const meta = this.metaAtual();
+    let metaBatidaAgora = false, ganhoFreeze = false;
+    if (g.dia.xp >= meta && !g.dia.freezeAward) {
+      metaBatidaAgora = true;
+      g.dia.freezeAward = true;
+      if (g.freeze < 2) { g.freeze += 1; ganhoFreeze = true; }
+    }
     const depois = this.patente(g).nivel;
     this._salvar();
-    return { ganho: n, subiuNivel: depois > antes, novaPatente: PATENTES[depois] };
+    return { ganho: n, subiuNivel: depois > antes, novaPatente: PATENTES[depois], metaBatidaAgora, ganhoFreeze };
   },
 
   /* ---- Frases motivacionais ---- */
@@ -239,7 +285,7 @@ const Gamify = {
       desafio = this.registrarDesafio(materiaId);
       if (desafio && desafio.concluido) novas.push(...this.checarConquistas());
     }
-    return { xp, combo: this.combo, acertou, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, desafio };
+    return { xp, combo: this.combo, acertou, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, desafio, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze };
   },
 
   flashcard(q) {
@@ -250,7 +296,7 @@ const Gamify = {
     const xp = q >= 4 ? 6 : (q === 3 ? 3 : 1);
     const lvl = this.addXP(xp);
     const novas = this.checarConquistas();
-    return { xp, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas };
+    return { xp, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze };
   },
 
   simulado(res, aprovado) {
@@ -266,7 +312,7 @@ const Gamify = {
     if (perc === 100) xp += 60;
     const lvl = this.addXP(xp);
     const novas = this.checarConquistas();
-    return { xp, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas };
+    return { xp, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze };
   },
 
   /* ---- Conquistas: retorna as recém-desbloqueadas ---- */
@@ -286,8 +332,9 @@ const Gamify = {
   metaDiaria() {
     const g = this.estado();
     const dia = this._diaAtual(g);
-    const pct = Math.min(100, Math.round((dia.xp / META_DIARIA_XP) * 100));
-    return { xp: dia.xp, meta: META_DIARIA_XP, pct, batida: dia.xp >= META_DIARIA_XP };
+    const meta = this.metaAtual();
+    const pct = Math.min(100, Math.round((dia.xp / meta) * 100));
+    return { xp: dia.xp, meta, pct, batida: dia.xp >= meta };
   },
 
   toggleSom() { const g = this.estado(); g.som = !g.som; this._salvar(); return g.som; },

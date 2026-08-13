@@ -10,7 +10,36 @@ const App = {
   init() {
     this.el = document.getElementById("app");
     this.bindNav();
-    this.navegar("inicio");
+    if (Gamify.precisaOnboarding()) this.onboarding();
+    else this.navegar("inicio");
+  },
+
+  /* Tela de boas-vindas (primeira vez): mascote + escolha de meta diária */
+  onboarding() {
+    const ov = document.createElement("div");
+    ov.className = "onboarding-overlay";
+    ov.innerHTML = `
+      <div class="onboarding-card">
+        <div class="ob-mascote">${MASCOTE.emoji}</div>
+        <h2>Bem-vindo, futuro Soldado!</h2>
+        <p>Eu sou o <strong>${MASCOTE.nome}</strong> e vou te acompanhar até a farda. 🎖️<br>
+        Qual vai ser sua <strong>meta diária</strong>? (dá pra mudar depois no Perfil)</p>
+        <div class="ob-metas">
+          ${META_OPCOES.map((m) => `
+            <button class="ob-meta ${m.id === "regular" ? "sugerida" : ""}" data-xp="${m.xp}">
+              <strong>${m.nome}</strong>
+              <span>${m.xp} XP</span>
+              <small>${m.desc}</small>
+            </button>`).join("")}
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelectorAll(".ob-meta").forEach((b) => b.addEventListener("click", () => {
+      Gamify.definirMeta(parseInt(b.dataset.xp, 10));
+      Som.levelup(); Confete.disparar(120);
+      ov.remove();
+      this.navegar("inicio");
+    }));
   },
 
   bindNav() {
@@ -38,7 +67,55 @@ const App = {
     };
     (telas[rota] || telas.inicio)();
     this.renderHud();
+    this.renderBottomNav(rota);
     window.scrollTo(0, 0);
+  },
+
+  /* Navegação inferior estilo app (mobile) */
+  renderBottomNav(rota) {
+    const bn = document.getElementById("bottomnav");
+    if (!bn) return;
+    const grupo = { inicio: "inicio", aulas: "aulas", questoes: "questoes", erros: "questoes",
+      flashcards: "questoes", simulado: "simulado", perfil: "perfil" };
+    const ativo = grupo[rota] || rota;
+    const itens = [
+      ["inicio", "🏠", "Início"],
+      ["aulas", "📘", "Aprender"],
+      ["questoes", "✍️", "Praticar"],
+      ["simulado", "📝", "Simular"],
+      ["perfil", "🎖️", "Perfil"],
+    ];
+    bn.innerHTML = itens.map(([r, ic, lb]) =>
+      `<button class="bn-item ${ativo === r ? "ativo" : ""}" data-bn="${r}">
+        <span class="bn-ic">${ic}</span><span class="bn-lb">${lb}</span></button>`).join("");
+    bn.querySelectorAll("[data-bn]").forEach((b) => b.addEventListener("click", () => {
+      this.materiaSelecionada = null;
+      this.navegar(b.dataset.bn);
+    }));
+  },
+
+  /* Decide o "próximo passo" ideal do aluno (o botão Continuar) */
+  _proximoPasso() {
+    const ordem = [...SUBJECTS].sort((a, b) => a.prioridade - b.prioridade);
+    for (const s of ordem) {
+      const arr = (typeof AULAS !== "undefined" && AULAS[s.id]) || [];
+      for (let i = 0; i < arr.length; i++) {
+        if (!Store.aulaInfo(arr[i].id).dominada)
+          return { tipo: "aula", materia: s.id, idx: i, titulo: arr[i].titulo, sub: `${s.nome} · Aula ${i + 1}`, cta: "Continuar aprendendo", ic: "📘" };
+      }
+    }
+    const venc = FLASHCARDS.filter((f) => SRS.estaVencido(Store.estadoCard(f.id))).length;
+    if (venc) return { tipo: "flash", titulo: `Revisar ${venc} flashcard(s)`, sub: "Revisão espaçada de hoje", cta: "Revisar agora", ic: "📇" };
+    const des = Gamify.desafioHoje();
+    if (!des.feito) return { tipo: "desafio", materia: des.materiaId, titulo: `Desafio: ${des.alvo} de ${des.materiaNome}`, sub: `+${des.recompensa} XP`, cta: "Encarar desafio", ic: "🎯" };
+    return { tipo: "simulado", titulo: "Fazer um simulado", sub: "Modelo real da prova", cta: "Começar", ic: "📝" };
+  },
+
+  _executarProximo(p) {
+    if (p.tipo === "aula") this.telaAula(p.materia, p.idx);
+    else if (p.tipo === "flash") { this.materiaSelecionada = null; this.navegar("flashcards"); }
+    else if (p.tipo === "desafio") { this.materiaSelecionada = p.materia; this.navegar("questoes"); }
+    else this.navegar("simulado");
   },
 
   /* ================================================================== */
@@ -61,6 +138,7 @@ const App = {
       </button>
       <button class="hud-item hud-streak ${meta.batida ? "brilho" : ""}" data-hud="perfil" title="Ofensiva de dias">
         <span class="hud-fogo">🔥</span><span class="hud-streak-num">${g.streak.count}</span>
+        ${g.freeze ? `<span class="hud-freeze" title="Protetores de ofensiva">❄️${g.freeze}</span>` : ""}
       </button>
       <button class="hud-item hud-meta" data-hud="perfil" title="Meta diária de XP">
         <span class="hud-ring" style="--pct:${meta.pct}">
@@ -85,9 +163,22 @@ const App = {
       Som.erro();
     }
     this.renderHud();
+    if (r.metaBatidaAgora) this._toastMeta(r.ganhoFreeze);
     if (r.desafio && r.desafio.concluido) this._toastDesafio(r.desafio.recompensa);
     if (r.subiuNivel || (r.desafio && r.desafio.subiuNivel)) this._modalLevelUp(r.novaPatente || (r.desafio && r.desafio.novaPatente));
     (r.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 400 + i * 900));
+  },
+
+  _toastMeta(ganhoFreeze) {
+    Som.conquista();
+    Confete.disparar(120);
+    const el = document.createElement("div");
+    el.className = "toast-conquista meta";
+    el.innerHTML = `<span class="tc-icone">🎯</span>
+      <span class="tc-txt"><strong>Meta diária concluída!</strong><br>Ofensiva garantida hoje 🔥${ganhoFreeze ? " · +1 Protetor de Ofensiva ❄️" : ""}</span>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add("sai"), 3400);
+    setTimeout(() => el.remove(), 4000);
   },
 
   _toastDesafio(recompensa) {
@@ -180,6 +271,7 @@ const App = {
     const errosN = Store.idsErrados().length;
     const fala = Gamify.mascoteFala();
     const desPct = Math.min(100, Math.round((des.progresso / des.alvo) * 100));
+    const prox = this._proximoPasso();
     const motiv = meta.batida
       ? `✅ Meta de hoje batida! Ofensiva de <strong>${g.streak.count} dia(s)</strong> 🔥 mantida.`
       : `🔥 Ofensiva de <strong>${g.streak.count} dia(s)</strong> · faltam <strong>${meta.meta - meta.xp} XP</strong> para bater a meta de hoje. Bora?`;
@@ -198,6 +290,16 @@ const App = {
           <div class="mascote-fala">${fala}</div>
         </div>
       </div>
+
+      <button class="continuar-card" id="continuar">
+        <div class="continuar-ic">${prox.ic}</div>
+        <div class="continuar-txt">
+          <div class="continuar-label">${prox.cta.toUpperCase()}</div>
+          <div class="continuar-titulo">${prox.titulo}</div>
+          <div class="continuar-sub">${prox.sub}</div>
+        </div>
+        <div class="continuar-seta">▶</div>
+      </button>
 
       <div class="motiv-banner ${meta.batida ? "ok" : ""}">${motiv}</div>
 
@@ -252,6 +354,8 @@ const App = {
     if (irDes) irDes.addEventListener("click", () => { this.materiaSelecionada = des.materiaId; this.navegar("questoes"); });
     const irErr = document.getElementById("ir-erros");
     if (irErr) irErr.addEventListener("click", () => this.navegar("erros"));
+    const cont = document.getElementById("continuar");
+    if (cont) cont.addEventListener("click", () => this._executarProximo(prox));
   },
 
   _cardResumo(icone, titulo, valor, legenda, rota, tom) {
@@ -383,6 +487,7 @@ const App = {
         this._popupXP(b, `+${r.xp} XP`, true);
         if (q >= 3) Som.acerto(); else Som.erro();
         this.renderHud();
+        if (r.metaBatidaAgora) this._toastMeta(r.ganhoFreeze);
         if (r.subiuNivel) this._modalLevelUp(r.novaPatente);
         (r.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 300 + i * 900));
         this._mostrarProximoCard(lista, idx + 1);
@@ -610,6 +715,7 @@ const App = {
     // Gamificação: XP em lote + celebração
     const gr = Gamify.simulado(res, aprovado);
     if (aprovado || perc === 100) Confete.disparar(perc === 100 ? 200 : 130);
+    if (gr.metaBatidaAgora) setTimeout(() => this._toastMeta(gr.ganhoFreeze), 300);
     if (gr.subiuNivel) setTimeout(() => this._modalLevelUp(gr.novaPatente), 300);
     (gr.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 600 + i * 900));
 
@@ -1036,10 +1142,18 @@ const App = {
           <div class="pcard-leg">meta de hoje<br>${meta.xp}/${meta.meta} XP</div>
         </div>
         <div class="pcard">
-          <div class="pcard-icone">🏅</div>
-          <div class="pcard-num">${desbloqueadas}/${totalConq}</div>
-          <div class="pcard-leg">conquistas</div>
+          <div class="pcard-icone">❄️</div>
+          <div class="pcard-num">${g.freeze}</div>
+          <div class="pcard-leg">protetores de ofensiva</div>
         </div>
+      </div>
+
+      <h2 class="secao-titulo">🎯 Meta diária</h2>
+      <div class="meta-opcoes">
+        ${META_OPCOES.map((m) => `
+          <button class="meta-opcao ${g.metaXp === m.xp ? "ativa" : ""}" data-meta="${m.xp}">
+            <strong>${m.nome}</strong><span>${m.xp} XP</span><small>${m.desc}</small>
+          </button>`).join("")}
       </div>
 
       <div class="stats-linha">
@@ -1096,6 +1210,11 @@ const App = {
     });
     const pd = document.getElementById("perfil-desafio");
     if (pd) pd.addEventListener("click", () => { this.materiaSelecionada = Gamify.desafioHoje().materiaId; this.navegar("questoes"); });
+    this.el.querySelectorAll("[data-meta]").forEach((b) => b.addEventListener("click", () => {
+      Gamify.definirMeta(parseInt(b.dataset.meta, 10));
+      Som.acerto();
+      this.telaPerfil();
+    }));
   },
 
   _graficoSemana() {
