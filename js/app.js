@@ -32,9 +32,110 @@ const App = {
       desempenho: () => this.telaDesempenho(),
       plano: () => this.telaPlano(),
       prova: () => this.telaProva(),
+      perfil: () => this.telaPerfil(),
     };
     (telas[rota] || telas.inicio)();
+    this.renderHud();
     window.scrollTo(0, 0);
+  },
+
+  /* ================================================================== */
+  /* HUD — barra fixa de patente / XP / ofensiva / meta                  */
+  /* ================================================================== */
+  renderHud() {
+    const hud = document.getElementById("hud");
+    if (!hud) return;
+    const g = Gamify.estado();
+    const p = Gamify.patente(g);
+    const meta = Gamify.metaDiaria();
+    hud.innerHTML = `
+      <button class="hud-item hud-patente" data-hud="perfil" title="Sua patente">
+        <span class="hud-simbolo">${p.atual.simbolo}</span>
+        <span class="hud-txt">
+          <span class="hud-nome">${p.atual.nome}</span>
+          <span class="hud-xp">${g.xp} XP${p.prox ? ` · faltam ${p.faltam}` : " · MÁX"}</span>
+        </span>
+        <span class="hud-barra"><span class="hud-barra-fill" style="width:${p.progresso}%"></span></span>
+      </button>
+      <button class="hud-item hud-streak ${meta.batida ? "brilho" : ""}" data-hud="perfil" title="Ofensiva de dias">
+        <span class="hud-fogo">🔥</span><span class="hud-streak-num">${g.streak.count}</span>
+      </button>
+      <button class="hud-item hud-meta" data-hud="perfil" title="Meta diária de XP">
+        <span class="hud-ring" style="--pct:${meta.pct}">
+          <span class="hud-ring-txt">${meta.pct}%</span>
+        </span>
+      </button>
+      <button class="hud-item hud-som" data-hud="som" title="Ligar/desligar som">${Gamify.somAtivo() ? "🔊" : "🔇"}</button>
+    `;
+    hud.querySelectorAll("[data-hud='perfil']").forEach((b) => b.addEventListener("click", () => this.navegar("perfil")));
+    const som = hud.querySelector("[data-hud='som']");
+    if (som) som.addEventListener("click", () => { Gamify.toggleSom(); this.renderHud(); });
+  },
+
+  /* Feedback visual+sonoro de uma resposta (modo prática). */
+  _feedbackResposta(ancora, r) {
+    // popup de XP
+    this._popupXP(ancora, `+${r.xp} XP`, r.acertou);
+    if (r.acertou) {
+      (r.combo >= 5 ? Som.comboAlto() : Som.acerto());
+      if (r.combo >= 3) this._toastCombo(r.combo);
+    } else {
+      Som.erro();
+    }
+    this.renderHud();
+    if (r.subiuNivel) this._modalLevelUp(r.novaPatente);
+    (r.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 400 + i * 900));
+  },
+
+  _popupXP(ancora, texto, positivo) {
+    if (!ancora) return;
+    const rect = ancora.getBoundingClientRect();
+    const el = document.createElement("div");
+    el.className = "xp-popup " + (positivo ? "pos" : "neg");
+    el.textContent = texto;
+    el.style.left = (rect.right - 60) + "px";
+    el.style.top = (rect.top + window.scrollY + 4) + "px";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1100);
+  },
+
+  _toastCombo(combo) {
+    const el = document.createElement("div");
+    el.className = "toast-combo";
+    el.innerHTML = `⚡ COMBO x${combo}!`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+  },
+
+  _toastConquista(a) {
+    Som.conquista();
+    Confete.disparar(80);
+    const el = document.createElement("div");
+    el.className = "toast-conquista";
+    el.innerHTML = `<span class="tc-icone">${a.icone}</span>
+      <span class="tc-txt"><strong>Conquista desbloqueada!</strong><br>${a.nome} — ${a.desc}</span>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add("sai"), 3200);
+    setTimeout(() => el.remove(), 3800);
+  },
+
+  _modalLevelUp(patente) {
+    Som.levelup();
+    Confete.disparar(160);
+    const ov = document.createElement("div");
+    ov.className = "levelup-overlay";
+    ov.innerHTML = `
+      <div class="levelup-card">
+        <div class="levelup-simbolo">${patente.simbolo}</div>
+        <div class="levelup-tag">PROMOÇÃO!</div>
+        <h2>Você agora é</h2>
+        <div class="levelup-nome">${patente.nome}</div>
+        <button class="btn primario" id="lu-ok">Continuar 🎖️</button>
+      </div>`;
+    document.body.appendChild(ov);
+    const fechar = () => ov.remove();
+    ov.addEventListener("click", (e) => { if (e.target === ov) fechar(); });
+    ov.querySelector("#lu-ok").addEventListener("click", fechar);
   },
 
   nomeMateria(id) {
@@ -50,6 +151,11 @@ const App = {
     const vencidos = FLASHCARDS.filter((f) => SRS.estaVencido(Store.estadoCard(f.id))).length;
     const respondidas = Object.keys(d.questoes).length;
     const simulados = d.simulados.length;
+    const g = Gamify.estado();
+    const meta = Gamify.metaDiaria();
+    const motiv = meta.batida
+      ? `✅ Meta de hoje batida! Ofensiva de <strong>${g.streak.count} dia(s)</strong> 🔥 mantida.`
+      : `🔥 Ofensiva de <strong>${g.streak.count} dia(s)</strong> · faltam <strong>${meta.meta - meta.xp} XP</strong> para bater a meta de hoje. Bora?`;
 
     this.el.innerHTML = `
       <section class="hero">
@@ -57,6 +163,8 @@ const App = {
         <p class="sub">Calibrado pela prova real: banca <strong>${EXAM.banca}</strong>,
         Edital <strong>${EXAM.edital}</strong>. Método: recordação ativa + revisão espaçada + simulados.</p>
       </section>
+
+      <div class="motiv-banner ${meta.batida ? "ok" : ""}">${motiv}</div>
 
       <div class="faixa-regra">
         🎯 <strong>Regra de aprovação:</strong> acertar ≥ <strong>${EXAM.minPontos} pontos</strong>
@@ -213,8 +321,15 @@ const App = {
     });
     aval.querySelectorAll(".aval").forEach((b) => {
       b.addEventListener("click", () => {
-        const novo = SRS.revisar(Store.estadoCard(card.id), parseInt(b.dataset.q, 10));
+        const q = parseInt(b.dataset.q, 10);
+        const novo = SRS.revisar(Store.estadoCard(card.id), q);
         Store.atualizarCard(card.id, novo);
+        const r = Gamify.flashcard(q);
+        this._popupXP(b, `+${r.xp} XP`, true);
+        if (q >= 3) Som.acerto(); else Som.erro();
+        this.renderHud();
+        if (r.subiuNivel) this._modalLevelUp(r.novaPatente);
+        (r.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 300 + i * 900));
         this._mostrarProximoCard(lista, idx + 1);
       });
     });
@@ -224,6 +339,7 @@ const App = {
   /* QUESTÕES                                                            */
   /* ================================================================== */
   telaQuestoes() {
+    Gamify.resetCombo();
     const filtro = this.materiaSelecionada;
     const lista = QUESTIONS.filter((q) => !filtro || q.materia === filtro);
     this.el.innerHTML = `
@@ -254,10 +370,12 @@ const App = {
             a.style.pointerEvents = "none";
           });
           bloco.querySelector(".explicacao").classList.remove("oculto");
-          bloco.querySelector(".resultado").innerHTML = acertou
-            ? '<span class="tag-ok">✔ Você acertou!</span>'
-            : '<span class="tag-err">✘ Resposta incorreta</span>';
           Store.registrarQuestao(q, acertou);
+          const r = Gamify.responder(acertou);
+          bloco.querySelector(".resultado").innerHTML = acertou
+            ? `<span class="tag-ok">✔ Você acertou! +${r.xp} XP${r.combo >= 2 ? ` · combo x${r.combo}` : ""}</span>`
+            : `<span class="tag-err">✘ Resposta incorreta · +${r.xp} XP</span>`;
+          this._feedbackResposta(alt, r);
         });
       });
     });
@@ -407,11 +525,18 @@ const App = {
     else if (!passou60) veredito = "❌ Abaixo dos 60% exigidos. Reforce as matérias fracas.";
     else veredito = `⚠️ Bateu os 60%, mas ZEROU em: ${zerou.join(", ")} — isso ELIMINA na prova real!`;
 
+    // Gamificação: XP em lote + celebração
+    const gr = Gamify.simulado(res, aprovado);
+    if (aprovado || perc === 100) Confete.disparar(perc === 100 ? 200 : 130);
+    if (gr.subiuNivel) setTimeout(() => this._modalLevelUp(gr.novaPatente), 300);
+    (gr.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 600 + i * 900));
+
     this.el.innerHTML = `
       <div class="resultado-simulado ${aprovado ? "aprovado" : "reprovado"}">
         <div class="nota-grande">${perc}%</div>
         <p>${res.acertos} de ${res.total} questões · ${min}min ${seg}s</p>
         <p class="veredito">${veredito}</p>
+        <p class="xp-ganho">⭐ +${gr.xp} XP ganhos!</p>
       </div>
       <h2 class="secao-titulo">Desempenho por matéria</h2>
       <div class="materias-lista">
@@ -447,6 +572,7 @@ const App = {
       </div>`;
     document.getElementById("novo").addEventListener("click", () => this.navegar("simulado"));
     document.getElementById("ver-desempenho").addEventListener("click", () => this.navegar("desempenho"));
+    this.renderHud();
   },
 
   /* ================================================================== */
@@ -613,6 +739,85 @@ const App = {
       <thead><tr>${t.colunas.map((c) => `<th>${c}</th>`).join("")}</tr></thead>
       <tbody>${t.linhas.map((l) => `<tr>${l.map((v) => `<td>${v}</td>`).join("")}</tr>`).join("")}</tbody>
     </table></div>`;
+  },
+
+  /* ================================================================== */
+  /* PERFIL — patente, ofensiva, meta e conquistas                       */
+  /* ================================================================== */
+  telaPerfil() {
+    const g = Gamify.estado();
+    const p = Gamify.patente(g);
+    const meta = Gamify.metaDiaria();
+    const totalConq = ACHIEVEMENTS.length;
+    const desbloqueadas = Object.keys(g.conquistas).length;
+    const acerto = g.stats.respondidas ? Math.round((g.stats.acertos / g.stats.respondidas) * 100) : 0;
+
+    this.el.innerHTML = `
+      <div class="perfil-hero">
+        <div class="perfil-brasao">${p.atual.simbolo}</div>
+        <div class="perfil-patente">${p.atual.nome}</div>
+        <div class="perfil-xp">${g.xp} XP total</div>
+        <div class="perfil-prog">
+          <div class="barra"><div class="barra-fill" style="width:${p.progresso}%"></div></div>
+          <span>${p.prox ? `${p.faltam} XP para ${p.prox.nome}` : "Patente máxima alcançada! 🏆"}</span>
+        </div>
+      </div>
+
+      <div class="perfil-cards">
+        <div class="pcard">
+          <div class="pcard-icone">🔥</div>
+          <div class="pcard-num">${g.streak.count}</div>
+          <div class="pcard-leg">dias de ofensiva</div>
+        </div>
+        <div class="pcard">
+          <div class="hud-ring grande" style="--pct:${meta.pct}"><span class="hud-ring-txt">${meta.pct}%</span></div>
+          <div class="pcard-leg">meta de hoje<br>${meta.xp}/${meta.meta} XP</div>
+        </div>
+        <div class="pcard">
+          <div class="pcard-icone">🏅</div>
+          <div class="pcard-num">${desbloqueadas}/${totalConq}</div>
+          <div class="pcard-leg">conquistas</div>
+        </div>
+      </div>
+
+      <div class="stats-linha">
+        <div class="stat"><div class="stat-valor">${g.stats.respondidas}</div><div class="stat-legenda">questões</div></div>
+        <div class="stat"><div class="stat-valor">${acerto}%</div><div class="stat-legenda">de acerto</div></div>
+        <div class="stat"><div class="stat-valor">${g.stats.melhorCombo}</div><div class="stat-legenda">melhor combo</div></div>
+      </div>
+
+      <h2 class="secao-titulo">🏅 Conquistas</h2>
+      <div class="conquistas-grid">
+        ${ACHIEVEMENTS.map((a) => {
+          const ok = !!g.conquistas[a.id];
+          return `<div class="conquista ${ok ? "ok" : "bloq"}">
+            <div class="conq-icone">${ok ? a.icone : "🔒"}</div>
+            <div class="conq-nome">${a.nome}</div>
+            <div class="conq-desc">${a.desc}</div>
+          </div>`;
+        }).join("")}
+      </div>
+
+      <h2 class="secao-titulo">🎖️ Escada de patentes</h2>
+      <div class="patentes-lista">
+        ${PATENTES.map((pt, i) => `
+          <div class="patente-linha ${i === p.nivel ? "atual" : ""} ${g.xp >= pt.xp ? "conquistada" : ""}">
+            <span class="pt-simbolo">${pt.simbolo}</span>
+            <span class="pt-nome">${pt.nome}</span>
+            <span class="pt-xp">${pt.xp} XP</span>
+          </div>`).join("")}
+      </div>
+
+      <div class="acoes-materia">
+        <button class="btn" id="toggle-som">${Gamify.somAtivo() ? "🔊 Som ligado" : "🔇 Som desligado"}</button>
+      </div>
+    `;
+    document.getElementById("toggle-som").addEventListener("click", (e) => {
+      const on = Gamify.toggleSom();
+      e.target.textContent = on ? "🔊 Som ligado" : "🔇 Som desligado";
+      if (on) Som.acerto();
+      this.renderHud();
+    });
   },
 
   /* ================================================================== */

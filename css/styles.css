@@ -247,6 +247,118 @@ body {
 .aviso-edital { margin-top: 28px; background: rgba(212,175,55,.08); border: 1px solid var(--dourado); border-radius: 12px; padding: 16px 18px; font-size: 14px; color: var(--texto-suave); }
 .aviso-edital strong { color: var(--dourado-claro); }
 
+/* =====================================================================
+   GAMIFICAÇÃO
+   ===================================================================== */
+/* HUD fixo */
+.hud { position: sticky; top: 58px; z-index: 40; display: flex; gap: 8px; align-items: center;
+  max-width: 860px; margin: 0 auto; padding: 8px 16px; }
+.hud-item { background: var(--card-bg); border: 1px solid var(--borda); border-radius: 12px;
+  padding: 6px 10px; cursor: pointer; color: var(--texto); display: flex; align-items: center; gap: 8px; transition: .15s; }
+.hud-item:hover { border-color: var(--dourado); }
+.hud-patente { flex: 1; position: relative; overflow: hidden; }
+.hud-simbolo { font-size: 20px; }
+.hud-txt { display: flex; flex-direction: column; line-height: 1.15; }
+.hud-nome { font-weight: 700; font-size: 13px; color: var(--dourado-claro); }
+.hud-xp { font-size: 11px; color: var(--texto-suave); }
+.hud-barra { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--azul-800); }
+.hud-barra-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--dourado), var(--dourado-claro)); transition: width .5s; }
+.hud-streak { font-weight: 700; }
+.hud-fogo { font-size: 16px; }
+.hud-streak-num { color: #ff9d5c; }
+.hud-streak.brilho { animation: pulseGlow 1.4s infinite; }
+@keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 rgba(255,157,92,0); } 50% { box-shadow: 0 0 14px rgba(255,157,92,.6); } }
+.hud-som { font-size: 15px; }
+
+/* Ring de meta (círculo com conic-gradient) */
+.hud-ring { --pct: 0; width: 34px; height: 34px; border-radius: 50%;
+  background: conic-gradient(var(--dourado) calc(var(--pct) * 1%), var(--azul-800) 0);
+  display: grid; place-items: center; position: relative; }
+.hud-ring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--card-bg); }
+.hud-ring-txt { position: relative; font-size: 10px; font-weight: 700; color: var(--dourado-claro); }
+.hud-ring.grande { width: 72px; height: 72px; }
+.hud-ring.grande .hud-ring-txt { font-size: 15px; }
+
+/* Banner motivacional no início */
+.motiv-banner { background: linear-gradient(90deg, rgba(255,157,92,.15), rgba(212,175,55,.1)); border: 1px solid #c2760a;
+  border-radius: 12px; padding: 12px 16px; margin: 16px 0; font-size: 14px; text-align: center; }
+.motiv-banner.ok { background: linear-gradient(90deg, rgba(34,197,94,.15), rgba(212,175,55,.1)); border-color: var(--verde); }
+
+/* Popup de XP flutuante */
+.xp-popup { position: absolute; z-index: 100; font-weight: 800; font-size: 15px; pointer-events: none;
+  animation: subirXP 1.1s ease-out forwards; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.xp-popup.pos { color: #7ee2a0; }
+.xp-popup.neg { color: #ffb27a; }
+@keyframes subirXP { 0% { opacity: 0; transform: translateY(6px) scale(.8); } 20% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-34px) scale(1); } }
+
+/* Toast de combo */
+.toast-combo { position: fixed; top: 40%; left: 50%; transform: translateX(-50%); z-index: 120;
+  font-size: 34px; font-weight: 900; color: var(--dourado-claro); text-shadow: 0 3px 10px rgba(0,0,0,.6);
+  pointer-events: none; animation: comboPop .9s ease-out forwards; }
+@keyframes comboPop { 0% { opacity: 0; transform: translateX(-50%) scale(.5); } 30% { opacity: 1; transform: translateX(-50%) scale(1.25); } 100% { opacity: 0; transform: translateX(-50%) scale(1); } }
+
+/* Toast de conquista */
+.toast-conquista { position: fixed; bottom: 24px; right: 24px; z-index: 130; max-width: 320px;
+  background: linear-gradient(135deg, var(--azul-700), var(--card-bg)); border: 1px solid var(--dourado);
+  border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5); animation: entraToast .4s ease-out; }
+.toast-conquista.sai { animation: saiToast .6s ease-in forwards; }
+@keyframes entraToast { from { transform: translateX(120%); } to { transform: translateX(0); } }
+@keyframes saiToast { to { transform: translateX(120%); opacity: 0; } }
+.tc-icone { font-size: 32px; }
+.tc-txt { font-size: 13px; }
+.tc-txt strong { color: var(--dourado-claro); }
+
+/* Confete */
+.confete-canvas { position: fixed; inset: 0; z-index: 200; pointer-events: none; }
+
+/* Level up */
+.levelup-overlay { position: fixed; inset: 0; z-index: 210; background: rgba(4,10,22,.82);
+  display: grid; place-items: center; animation: fade .3s; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.levelup-card { background: linear-gradient(160deg, var(--azul-700), var(--card-bg)); border: 2px solid var(--dourado);
+  border-radius: 20px; padding: 32px 40px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  animation: popCard .5s cubic-bezier(.2,1.3,.4,1); }
+@keyframes popCard { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.levelup-simbolo { font-size: 56px; animation: girar 1s ease-out; }
+@keyframes girar { from { transform: rotate(-30deg) scale(.5); } to { transform: rotate(0) scale(1); } }
+.levelup-tag { color: var(--dourado-claro); font-weight: 800; letter-spacing: 3px; margin: 8px 0; }
+.levelup-card h2 { font-size: 16px; color: var(--texto-suave); font-weight: 400; }
+.levelup-nome { font-size: 28px; font-weight: 800; color: var(--dourado-claro); margin: 6px 0 20px; }
+
+/* Perfil */
+.perfil-hero { text-align: center; background: linear-gradient(160deg, var(--azul-700), var(--card-bg));
+  border: 1px solid var(--dourado); border-radius: 18px; padding: 28px 20px; box-shadow: var(--sombra); }
+.perfil-brasao { font-size: 52px; }
+.perfil-patente { font-size: 24px; font-weight: 800; color: var(--dourado-claro); margin-top: 4px; }
+.perfil-xp { color: var(--texto-suave); font-size: 14px; }
+.perfil-prog { max-width: 420px; margin: 14px auto 0; }
+.perfil-prog span { font-size: 12px; color: var(--texto-suave); }
+.perfil-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+.pcard { background: var(--card-bg); border: 1px solid var(--borda); border-radius: 14px; padding: 16px;
+  text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pcard-icone { font-size: 30px; }
+.pcard-num { font-size: 26px; font-weight: 800; color: var(--dourado-claro); }
+.pcard-leg { font-size: 12px; color: var(--texto-suave); }
+
+.conquistas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.conquista { background: var(--card-bg); border: 1px solid var(--borda); border-radius: 12px; padding: 14px 10px; text-align: center; }
+.conquista.ok { border-color: var(--dourado); background: rgba(212,175,55,.08); }
+.conquista.bloq { opacity: .55; filter: grayscale(.6); }
+.conq-icone { font-size: 28px; }
+.conq-nome { font-weight: 700; font-size: 13px; margin: 4px 0 2px; }
+.conq-desc { font-size: 11px; color: var(--texto-suave); }
+
+.patentes-lista { display: grid; gap: 6px; }
+.patente-linha { display: flex; align-items: center; gap: 12px; background: var(--card-bg); border: 1px solid var(--borda);
+  border-radius: 8px; padding: 10px 14px; font-size: 14px; opacity: .6; }
+.patente-linha.conquistada { opacity: 1; }
+.patente-linha.atual { border-color: var(--dourado); background: rgba(212,175,55,.1); }
+.pt-simbolo { min-width: 60px; }
+.pt-nome { flex: 1; font-weight: 600; }
+.pt-xp { font-size: 12px; color: var(--texto-suave); }
+.xp-ganho { color: var(--dourado-claro); font-weight: 700; margin-top: 6px; }
+
 /* ---------- RESPONSIVO ---------- */
 @media (max-width: 560px) {
   .hero h1 { font-size: 26px; }

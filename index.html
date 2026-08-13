@@ -24,8 +24,11 @@
       <button data-rota="desempenho">Desempenho</button>
       <button data-rota="plano">Plano</button>
       <button data-rota="prova">Prova &amp; TAF</button>
+      <button data-rota="perfil">🎖️ Perfil</button>
     </nav>
   </header>
+
+  <div id="hud" class="hud"><!-- barra de patente/XP/ofensiva --></div>
 
   <main id="app" class="conteudo"><!-- renderizado via JS --></main>
 
@@ -34,12 +37,13 @@
     sempre confira o edital vigente.
   </footer>
 
-  <!-- ordem importa: dados → questões → resumos → motores → app -->
+  <!-- ordem importa: dados → questões → resumos → motores → gamificação → app -->
   <script src="js/data.js"></script>
   <script src="js/questions.js"></script>
   <script src="js/resumos.js"></script>
   <script src="js/srs.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/gamify.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

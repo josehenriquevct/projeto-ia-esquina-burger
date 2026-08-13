@@ -49,6 +49,16 @@ python3 -m http.server 8000
 | **Desempenho** | Estatísticas, pontos fracos e histórico de simulados |
 | **Plano** | Prioridade por densidade (pontos/hora) e alocação de tempo |
 | **Prova & TAF** | Estrutura da prova, redação, tabelas do TAF e checklist de preparação |
+| **🎖️ Perfil** | Patente, ofensiva de dias, meta diária, conquistas e escada de patentes |
+
+### 🎮 Gamificação (feita para viciar em estudar)
+
+- **Patentes militares por XP:** suba de **Recruta → Soldado → Cabo → Sargento → … → Coronel** ganhando XP a cada acerto, flashcard e simulado, com animação de promoção.
+- **Ofensiva de dias** 🔥 (streak): mantenha a sequência estudando todo dia.
+- **Combo de acertos** ⚡: acertos seguidos rendem XP extra e um toast comemorativo.
+- **Meta diária de XP** com anel de progresso.
+- **15 conquistas/medalhas** 🏅 desbloqueáveis.
+- **Efeitos sonoros** (Web Audio, sem arquivos externos), **confete** e **pop-ups de XP** — desligáveis a qualquer momento.
 
 ### Conteúdo incluído
 
@@ -68,6 +78,7 @@ css/styles.css      → tema visual (azul-marinho + dourado)
 js/data.js          → matérias, blueprint da prova, TAF, redação, flashcards
 js/questions.js     → banco de 140 questões (estilo AOCP)
 js/resumos.js       → resumos de teoria por matéria
+js/gamify.js        → gamificação (patentes, XP, streak, conquistas, sons, confete)
 js/srs.js           → motor de revisão espaçada (SM-2)
 js/storage.js       → persistência do progresso (localStorage)
 js/app.js           → interface e telas
