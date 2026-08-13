@@ -1,7 +1,7 @@
 /* Service Worker — Estudo PMGO (PWA offline)
    Cacheia os arquivos do app para funcionar sem internet.
    Ao alterar arquivos, suba a versão do CACHE para forçar atualização. */
-const CACHE = "pmgo-v4";
+const CACHE = "pmgo-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -34,18 +34,26 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
-  e.respondWith(
-    caches.match(req).then((hit) => {
-      if (hit) return hit;
-      return fetch(req).then((res) => {
-        // guarda cópia dos recursos do próprio app
+
+  // HTML / navegação: REDE PRIMEIRO (sempre pega a versão mais nova quando online),
+  // cache só como reserva offline. Evita ficar preso numa versão antiga.
+  if (req.mode === "navigate" || (req.destination === "document")) {
+    e.respondWith(
+      fetch(req).then((res) => {
         const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        caches.open(CACHE).then((c) => c.put("./index.html", copy)).catch(() => {});
         return res;
-      }).catch(() => {
-        // offline e sem cache: para navegação, devolve o index
-        if (req.mode === "navigate") return caches.match("./index.html");
-      });
-    })
+      }).catch(() => caches.match(req).then((h) => h || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // demais recursos: cache primeiro (rápido/offline)
+  e.respondWith(
+    caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      return res;
+    }))
   );
 });
