@@ -14,6 +14,7 @@ const Store = {
     return {
       cards: {},          // { cardId: estadoSRS }
       questoes: {},       // { questaoId: { tentativas, acertos, ultima } }
+      erradas: {},        // { questaoId: true }  — última resposta foi errada
       simulados: [],      // [{ data, total, acertos, tempo, porMateria }]
       estatMateria: {},   // { materiaId: { respondidas, acertos } }
       criadoEm: Date.now(),
@@ -60,12 +61,22 @@ const Store = {
     q.ultima = Date.now();
     d.questoes[questao.id] = q;
 
+    // caderno de erros: entra ao errar, sai ao acertar
+    if (!d.erradas) d.erradas = {};
+    if (acertou) delete d.erradas[questao.id];
+    else d.erradas[questao.id] = true;
+
     const m = d.estatMateria[questao.materia] || { respondidas: 0, acertos: 0 };
     m.respondidas += 1;
     if (acertou) m.acertos += 1;
     d.estatMateria[questao.materia] = m;
 
     this.salvar();
+  },
+
+  idsErrados() {
+    const d = this.carregar();
+    return Object.keys(d.erradas || {});
   },
 
   // ---- Simulados ----

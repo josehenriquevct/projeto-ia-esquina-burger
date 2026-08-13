@@ -59,6 +59,11 @@ python3 -m http.server 8000
 - **Meta diária de XP** com anel de progresso.
 - **15 conquistas/medalhas** 🏅 desbloqueáveis.
 - **Efeitos sonoros** (Web Audio, sem arquivos externos), **confete** e **pop-ups de XP** — desligáveis a qualquer momento.
+- **Desafio diário** 🎯: uma missão nova por dia ("acerte X questões da matéria Y") com bônus de XP e comemoração.
+- **Mascote (Sgt. Coruja 🦉)** que fala com você e reage ao seu progresso.
+- **Frases motivacionais** espalhadas pelo app (início, promoções, desafios, caderno de erros).
+- **Gráfico de evolução semanal** de XP por dia, no Perfil.
+- **Caderno de erros** 🔁: revise só as questões que você errou — acertar remove a questão do caderno.
 
 ### Conteúdo incluído
 

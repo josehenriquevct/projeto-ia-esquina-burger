@@ -26,6 +26,32 @@ const PATENTES = [
 
 const META_DIARIA_XP = 50;
 
+/* ---- Mascote e frases motivacionais -------------------------------------- */
+const MASCOTE = { nome: "Sgt. Coruja", emoji: "🦉" };
+
+const FRASES = [
+  "A farda que você sonha se conquista uma questão por vez.",
+  "Disciplina é escolher o que você quer MAIS do que o que você quer AGORA.",
+  "Cada acerto de hoje é um concorrente a menos amanhã.",
+  "O aprovado é o desistente que tentou mais uma vez.",
+  "Não conte os dias. Faça os dias contarem.",
+  "A aprovação não é sorte: é constância disfarçada de talento.",
+  "Estudar cansa. Reprovar cansa mais.",
+  "Sua futura patente começa no material de hoje.",
+  "Foco no edital, olhos na farda. 🎖️",
+  "Quem domina o básico com constância, vence o avançado.",
+  "1% melhor por dia é um aprovado no fim do ano.",
+  "Enquanto você treina, você vence. Continue.",
+  "Dor de estudar é temporária. Orgulho da posse é para sempre.",
+  "Você não precisa ser o mais inteligente — precisa ser o mais constante.",
+  "O simulado é o campo de treino. A prova é a batalha. Treine mais.",
+  "Errar é dado, não derrota: cada erro corrigido é ponto garantido.",
+  "A meta não muda. Só a sua determinação de bater ela hoje.",
+  "Grandes aprovações são feitas de pequenos dias de estudo.",
+  "Ninguém sente sua vontade. Todo mundo vê seu resultado.",
+  "Respira, foca e resolve mais uma. É assim que se passa.",
+];
+
 /* ---- Conquistas (medalhas) ------------------------------------------------ */
 const ACHIEVEMENTS = [
   { id: "tiro1",    icone: "🎯", nome: "Primeiro Tiro",   desc: "Responda sua 1ª questão",         cond: (g) => g.stats.respondidas >= 1 },
@@ -67,6 +93,8 @@ const Gamify = {
       dia: { data: null, xp: 0 },
       conquistas: {}, // id -> timestamp
       stats: { respondidas: 0, acertos: 0, flashcards: 0, simulados: 0, melhorCombo: 0, notaMax: 0, passouSimulado: false },
+      historico: {},   // 'YYYY-MM-DD' -> xp do dia
+      desafio: null,   // desafio do dia
       som: true,
     };
   },
@@ -119,14 +147,78 @@ const Gamify = {
     const antes = this.patente(g).nivel;
     g.xp += n;
     this._diaAtual(g).xp += n;
+    // histórico diário (mantém últimos ~30 dias)
+    if (!g.historico) g.historico = {};
+    const hoje = _hoje();
+    g.historico[hoje] = (g.historico[hoje] || 0) + n;
+    const chaves = Object.keys(g.historico).sort();
+    while (chaves.length > 30) { delete g.historico[chaves.shift()]; }
     const depois = this.patente(g).nivel;
     this._salvar();
     return { ganho: n, subiuNivel: depois > antes, novaPatente: PATENTES[depois] };
   },
 
+  /* ---- Frases motivacionais ---- */
+  frase() { return FRASES[Math.floor(Math.random() * FRASES.length)]; },
+  fraseDoDia() {
+    const d = new Date();
+    const idx = (d.getFullYear() + d.getMonth() * 31 + d.getDate()) % FRASES.length;
+    return FRASES[idx];
+  },
+  mascoteFala() {
+    const g = this.estado();
+    const meta = this.metaDiaria();
+    if (meta.batida) return `Meta batida hoje! Ofensiva de ${g.streak.count} dia(s). Orgulho da tropa! 🔥`;
+    if (g.streak.count >= 3) return `${g.streak.count} dias seguidos! Não quebre a ofensiva — bora bater a meta.`;
+    if (g.xp === 0) return "Bem-vindo, recruta! Responda sua primeira questão e comece a subir de patente.";
+    return this.fraseDoDia();
+  },
+
+  /* ---- Histórico semanal (últimos 7 dias) ---- */
+  historicoSemana() {
+    const g = this.estado();
+    const dias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const out = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      out.push({ label: dias[d.getDay()], data: key, xp: (g.historico && g.historico[key]) || 0, hoje: i === 0 });
+    }
+    return out;
+  },
+
+  /* ---- Desafio diário ---- */
+  _gerarDesafio() {
+    const d = new Date();
+    const start = new Date(d.getFullYear(), 0, 0);
+    const dayIdx = Math.floor((d - start) / 86400000);
+    const materia = SUBJECTS[dayIdx % SUBJECTS.length];
+    const alvos = [5, 6, 8, 10];
+    const alvo = alvos[dayIdx % alvos.length];
+    return { data: _hoje(), materiaId: materia.id, materiaNome: materia.nome, alvo, progresso: 0, feito: false, recompensa: alvo * 10 + 30 };
+  },
+  desafioHoje() {
+    const g = this.estado();
+    if (!g.desafio || g.desafio.data !== _hoje()) { g.desafio = this._gerarDesafio(); this._salvar(); }
+    return g.desafio;
+  },
+  registrarDesafio(materiaId) {
+    const des = this.desafioHoje();
+    if (des.feito || des.materiaId !== materiaId) return null;
+    des.progresso += 1;
+    if (des.progresso >= des.alvo) {
+      des.feito = true; this._salvar();
+      const lvl = this.addXP(des.recompensa);
+      return { concluido: true, recompensa: des.recompensa, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente };
+    }
+    this._salvar();
+    return { concluido: false, progresso: des.progresso, alvo: des.alvo };
+  },
+
   /* ---- Eventos de estudo ---- */
-  // Resposta em modo prática. Retorna {xp, combo, subiuNivel, novaPatente, novas[]}
-  responder(acertou) {
+  // Resposta em modo prática. Retorna {xp, combo, subiuNivel, novaPatente, novas[], desafio}
+  responder(acertou, materiaId) {
     this.checkin();
     const g = this.estado();
     g.stats.respondidas += 1;
@@ -142,7 +234,12 @@ const Gamify = {
     this._salvar();
     const lvl = this.addXP(xp);
     const novas = this.checarConquistas();
-    return { xp, combo: this.combo, acertou, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas };
+    let desafio = null;
+    if (acertou && materiaId) {
+      desafio = this.registrarDesafio(materiaId);
+      if (desafio && desafio.concluido) novas.push(...this.checarConquistas());
+    }
+    return { xp, combo: this.combo, acertou, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, desafio };
   },
 
   flashcard(q) {

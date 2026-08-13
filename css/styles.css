@@ -359,10 +359,56 @@ body {
 .pt-xp { font-size: 12px; color: var(--texto-suave); }
 .xp-ganho { color: var(--dourado-claro); font-weight: 700; margin-top: 6px; }
 
+/* ---- Mascote ---- */
+.mascote-box { display: flex; gap: 14px; align-items: center; background: var(--card-bg);
+  border: 1px solid var(--borda); border-left: 4px solid var(--dourado); border-radius: 14px; padding: 14px 16px; margin: 16px 0; }
+.mascote-avatar { font-size: 44px; animation: flutua 3s ease-in-out infinite; }
+@keyframes flutua { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.mascote-balao { flex: 1; }
+.mascote-nome { font-weight: 800; color: var(--dourado-claro); font-size: 13px; letter-spacing: .5px; }
+.mascote-fala { font-size: 15px; margin-top: 2px; font-style: italic; }
+
+/* ---- Destaques do início: desafio + erros ---- */
+.destaque-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin: 12px 0; }
+.desafio-card { background: var(--card-bg); border: 1px solid var(--borda); border-left: 4px solid #ff9d5c;
+  border-radius: 14px; padding: 16px; }
+.desafio-card.feito { border-left-color: var(--verde); }
+.desafio-cab { display: flex; justify-content: space-between; font-size: 13px; color: var(--dourado-claro); font-weight: 700; margin-bottom: 8px; }
+.desafio-txt { font-size: 14px; margin-bottom: 10px; }
+.desafio-prog { font-size: 12px; color: var(--texto-suave); margin-top: 4px; }
+.erros-card { background: var(--card-bg); border: 1px solid var(--borda); border-radius: 14px; padding: 16px;
+  text-align: center; cursor: pointer; color: var(--texto); display: flex; flex-direction: column; justify-content: center; gap: 4px; transition: .15s; }
+.erros-card:hover { border-color: var(--dourado); transform: translateY(-2px); }
+.erros-card.tem { border-color: #ff9d5c; }
+.erros-icone { font-size: 28px; }
+.erros-num { font-size: 30px; font-weight: 800; color: var(--dourado-claro); }
+.erros-leg { font-size: 11px; color: var(--texto-suave); }
+.frase-mini { font-style: italic; color: var(--dourado-claro); background: rgba(212,175,55,.08);
+  border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-size: 14px; }
+
+/* ---- Gráfico semanal ---- */
+.grafico-semana { display: flex; gap: 8px; align-items: flex-end; background: var(--card-bg);
+  border: 1px solid var(--borda); border-radius: 14px; padding: 16px 12px; height: 180px; }
+.gs-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+.gs-valor { font-size: 11px; color: var(--texto-suave); height: 14px; }
+.gs-barra-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.gs-barra { width: 70%; background: linear-gradient(180deg, var(--dourado-claro), var(--dourado)); border-radius: 6px 6px 0 0; transition: height .5s; min-height: 3px; }
+.gs-barra.hoje { background: linear-gradient(180deg, #7ee2a0, var(--verde)); }
+.gs-label { font-size: 11px; color: var(--texto-suave); }
+.gs-label.hoje { color: var(--verde); font-weight: 700; }
+
+/* ---- Frase no level up ---- */
+.levelup-frase { font-style: italic; color: var(--texto-suave); font-size: 13px; max-width: 280px; margin: -8px auto 18px; }
+.toast-conquista.desafio { border-color: #ff9d5c; }
+
 /* ---------- RESPONSIVO ---------- */
 @media (max-width: 560px) {
   .hero h1 { font-size: 26px; }
   .stats-linha { grid-template-columns: 1fr; }
   .nav button { padding: 7px 10px; font-size: 13px; }
   .brand small { display: none; }
+  .destaque-grid { grid-template-columns: 1fr; }
+  .perfil-cards { grid-template-columns: 1fr; }
+  .hud-nome { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grafico-semana { height: 150px; }
 }

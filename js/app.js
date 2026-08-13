@@ -27,6 +27,7 @@ const App = {
       inicio: () => this.telaInicio(),
       flashcards: () => this.telaFlashcards(),
       questoes: () => this.telaQuestoes(),
+      erros: () => this.telaErros(),
       resumos: () => this.telaResumos(),
       simulado: () => this.telaSimulado(),
       desempenho: () => this.telaDesempenho(),
@@ -83,8 +84,21 @@ const App = {
       Som.erro();
     }
     this.renderHud();
-    if (r.subiuNivel) this._modalLevelUp(r.novaPatente);
+    if (r.desafio && r.desafio.concluido) this._toastDesafio(r.desafio.recompensa);
+    if (r.subiuNivel || (r.desafio && r.desafio.subiuNivel)) this._modalLevelUp(r.novaPatente || (r.desafio && r.desafio.novaPatente));
     (r.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 400 + i * 900));
+  },
+
+  _toastDesafio(recompensa) {
+    Som.conquista();
+    Confete.disparar(110);
+    const el = document.createElement("div");
+    el.className = "toast-conquista desafio";
+    el.innerHTML = `<span class="tc-icone">🎯</span>
+      <span class="tc-txt"><strong>Desafio diário concluído!</strong><br>+${recompensa} XP de bônus · ${Gamify.frase()}</span>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add("sai"), 3600);
+    setTimeout(() => el.remove(), 4200);
   },
 
   _popupXP(ancora, texto, positivo) {
@@ -130,6 +144,7 @@ const App = {
         <div class="levelup-tag">PROMOÇÃO!</div>
         <h2>Você agora é</h2>
         <div class="levelup-nome">${patente.nome}</div>
+        <div class="levelup-frase">"${Gamify.frase()}"</div>
         <button class="btn primario" id="lu-ok">Continuar 🎖️</button>
       </div>`;
     document.body.appendChild(ov);
@@ -153,6 +168,10 @@ const App = {
     const simulados = d.simulados.length;
     const g = Gamify.estado();
     const meta = Gamify.metaDiaria();
+    const des = Gamify.desafioHoje();
+    const errosN = Store.idsErrados().length;
+    const fala = Gamify.mascoteFala();
+    const desPct = Math.min(100, Math.round((des.progresso / des.alvo) * 100));
     const motiv = meta.batida
       ? `✅ Meta de hoje batida! Ofensiva de <strong>${g.streak.count} dia(s)</strong> 🔥 mantida.`
       : `🔥 Ofensiva de <strong>${g.streak.count} dia(s)</strong> · faltam <strong>${meta.meta - meta.xp} XP</strong> para bater a meta de hoje. Bora?`;
@@ -164,7 +183,30 @@ const App = {
         Edital <strong>${EXAM.edital}</strong>. Método: recordação ativa + revisão espaçada + simulados.</p>
       </section>
 
+      <div class="mascote-box">
+        <div class="mascote-avatar">${MASCOTE.emoji}</div>
+        <div class="mascote-balao">
+          <div class="mascote-nome">${MASCOTE.nome}</div>
+          <div class="mascote-fala">${fala}</div>
+        </div>
+      </div>
+
       <div class="motiv-banner ${meta.batida ? "ok" : ""}">${motiv}</div>
+
+      <div class="destaque-grid">
+        <div class="desafio-card ${des.feito ? "feito" : ""}">
+          <div class="desafio-cab"><span>🎯 Desafio de hoje</span>${des.feito ? '<span class="tag-ok">✔ concluído</span>' : `<span>+${des.recompensa} XP</span>`}</div>
+          <div class="desafio-txt">Acerte <strong>${des.alvo}</strong> questões de <strong>${des.materiaNome}</strong></div>
+          <div class="barra"><div class="barra-fill" style="width:${desPct}%"></div></div>
+          <div class="desafio-prog">${des.progresso}/${des.alvo}</div>
+          ${des.feito ? "" : `<button class="btn primario btn-pequeno" id="ir-desafio">Encarar desafio →</button>`}
+        </div>
+        <button class="erros-card ${errosN ? "tem" : ""}" id="ir-erros">
+          <div class="erros-icone">🔁</div>
+          <div class="erros-num">${errosN}</div>
+          <div class="erros-leg">${errosN ? "questões no seu caderno de erros" : "caderno de erros limpo 🎉"}</div>
+        </button>
+      </div>
 
       <div class="faixa-regra">
         🎯 <strong>Regra de aprovação:</strong> acertar ≥ <strong>${EXAM.minPontos} pontos</strong>
@@ -197,6 +239,10 @@ const App = {
       b.addEventListener("click", () => this.navegar(b.dataset.ir)));
     this.el.querySelectorAll("[data-materia-detalhe]").forEach((b) =>
       b.addEventListener("click", () => this.abrirDetalheMateria(b.dataset.materiaDetalhe)));
+    const irDes = document.getElementById("ir-desafio");
+    if (irDes) irDes.addEventListener("click", () => { this.materiaSelecionada = des.materiaId; this.navegar("questoes"); });
+    const irErr = document.getElementById("ir-erros");
+    if (irErr) irErr.addEventListener("click", () => this.navegar("erros"));
   },
 
   _cardResumo(icone, titulo, valor, legenda, rota, tom) {
@@ -371,7 +417,7 @@ const App = {
           });
           bloco.querySelector(".explicacao").classList.remove("oculto");
           Store.registrarQuestao(q, acertou);
-          const r = Gamify.responder(acertou);
+          const r = Gamify.responder(acertou, q.materia);
           bloco.querySelector(".resultado").innerHTML = acertou
             ? `<span class="tag-ok">✔ Você acertou! +${r.xp} XP${r.combo >= 2 ? ` · combo x${r.combo}` : ""}</span>`
             : `<span class="tag-err">✘ Resposta incorreta · +${r.xp} XP</span>`;
@@ -402,6 +448,33 @@ const App = {
         <div class="resultado"></div>
         <div class="explicacao oculto"><strong>💡 Comentário:</strong> ${q.explicacao}</div>
       </article>`;
+  },
+
+  /* ================================================================== */
+  /* ERROS — caderno de erros (revisar só o que errei)                   */
+  /* ================================================================== */
+  telaErros() {
+    Gamify.resetCombo();
+    const ids = Store.idsErrados();
+    const lista = QUESTIONS.filter((q) => ids.includes(q.id));
+    this.el.innerHTML = `
+      <h1>🔁 Caderno de erros</h1>
+      <p class="sub">Aqui ficam só as questões que você <strong>errou</strong>. Acertar aqui remove a
+      questão do caderno. Revisar o próprio erro é a forma mais rápida de virar o jogo.</p>
+      ${lista.length ? `<div class="frase-mini">💬 ${Gamify.frase()}</div>` : ""}
+      <div id="area-questoes"></div>`;
+    if (!lista.length) {
+      document.getElementById("area-questoes").innerHTML = `
+        <div class="parabens">
+          <div class="parabens-icone">🎉</div>
+          <h2>Caderno de erros limpo!</h2>
+          <p>Você não tem questões erradas pendentes. Continue praticando para manter assim.</p>
+          <button class="btn primario" id="ir-questoes">Praticar questões</button>
+        </div>`;
+      document.getElementById("ir-questoes").addEventListener("click", () => { this.materiaSelecionada = null; this.navegar("questoes"); });
+      return;
+    }
+    this._renderQuestoes(lista);
   },
 
   /* ================================================================== */
@@ -786,6 +859,20 @@ const App = {
         <div class="stat"><div class="stat-valor">${g.stats.melhorCombo}</div><div class="stat-legenda">melhor combo</div></div>
       </div>
 
+      <div class="mascote-box">
+        <div class="mascote-avatar">${MASCOTE.emoji}</div>
+        <div class="mascote-balao">
+          <div class="mascote-nome">${MASCOTE.nome}</div>
+          <div class="mascote-fala">${Gamify.mascoteFala()}</div>
+        </div>
+      </div>
+
+      <h2 class="secao-titulo">📈 Evolução da semana (XP por dia)</h2>
+      ${this._graficoSemana()}
+
+      <h2 class="secao-titulo">🎯 Desafio de hoje</h2>
+      ${this._cardDesafioPerfil()}
+
       <h2 class="secao-titulo">🏅 Conquistas</h2>
       <div class="conquistas-grid">
         ${ACHIEVEMENTS.map((a) => {
@@ -818,6 +905,35 @@ const App = {
       if (on) Som.acerto();
       this.renderHud();
     });
+    const pd = document.getElementById("perfil-desafio");
+    if (pd) pd.addEventListener("click", () => { this.materiaSelecionada = Gamify.desafioHoje().materiaId; this.navegar("questoes"); });
+  },
+
+  _graficoSemana() {
+    const semana = Gamify.historicoSemana();
+    const max = Math.max(10, ...semana.map((d) => d.xp));
+    return `<div class="grafico-semana">
+      ${semana.map((d) => {
+        const h = Math.round((d.xp / max) * 100);
+        return `<div class="gs-col">
+          <div class="gs-valor">${d.xp || ""}</div>
+          <div class="gs-barra-wrap"><div class="gs-barra ${d.hoje ? "hoje" : ""}" style="height:${Math.max(3, h)}%"></div></div>
+          <div class="gs-label ${d.hoje ? "hoje" : ""}">${d.label}</div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  },
+
+  _cardDesafioPerfil() {
+    const des = Gamify.desafioHoje();
+    const pct = Math.min(100, Math.round((des.progresso / des.alvo) * 100));
+    return `<div class="desafio-card ${des.feito ? "feito" : ""}">
+      <div class="desafio-cab"><span>🎯 ${des.materiaNome}</span>${des.feito ? '<span class="tag-ok">✔ concluído</span>' : `<span>+${des.recompensa} XP</span>`}</div>
+      <div class="desafio-txt">Acerte <strong>${des.alvo}</strong> questões desta matéria hoje</div>
+      <div class="barra"><div class="barra-fill" style="width:${pct}%"></div></div>
+      <div class="desafio-prog">${des.progresso}/${des.alvo}</div>
+      ${des.feito ? "" : `<button class="btn primario btn-pequeno" id="perfil-desafio">Ir agora →</button>`}
+    </div>`;
   },
 
   /* ================================================================== */
