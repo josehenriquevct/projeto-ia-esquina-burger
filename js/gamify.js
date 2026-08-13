@@ -106,6 +106,7 @@ const Gamify = {
       stats: { respondidas: 0, acertos: 0, flashcards: 0, simulados: 0, melhorCombo: 0, notaMax: 0, passouSimulado: false },
       historico: {},   // 'YYYY-MM-DD' -> xp do dia
       desafio: null,   // desafio do dia
+      semana: null,    // controle do desafio semanal
       som: true,
     };
   },
@@ -199,9 +200,22 @@ const Gamify = {
       g.dia.freezeAward = true;
       if (g.freeze < 2) { g.freeze += 1; ganhoFreeze = true; }
     }
+    // desafio semanal (prêmio único por semana)
+    const wk = this._segundaDaSemana();
+    if (!g.semana || g.semana.wk !== wk) g.semana = { wk, recompensaDada: false };
+    let semanaConcluida = false, bonusSemana = 0;
+    if (this.xpSemana() >= meta * 5 && !g.semana.recompensaDada) {
+      g.semana.recompensaDada = true;
+      semanaConcluida = true;
+      bonusSemana = Math.round(meta * 5 * 0.3);
+      if (g.freeze < 3) g.freeze += 1;
+      g.xp += bonusSemana;
+      g.dia.xp += bonusSemana;
+      g.historico[hoje] = (g.historico[hoje] || 0) + bonusSemana;
+    }
     const depois = this.patente(g).nivel;
     this._salvar();
-    return { ganho: n, subiuNivel: depois > antes, novaPatente: PATENTES[depois], metaBatidaAgora, ganhoFreeze };
+    return { ganho: n, subiuNivel: depois > antes, novaPatente: PATENTES[depois], metaBatidaAgora, ganhoFreeze, semanaConcluida, bonusSemana };
   },
 
   /* ---- Frases motivacionais ---- */
@@ -218,6 +232,26 @@ const Gamify = {
     if (g.streak.count >= 3) return `${g.streak.count} dias seguidos! Não quebre a ofensiva — bora bater a meta.`;
     if (g.xp === 0) return "Bem-vindo, recruta! Responda sua primeira questão e comece a subir de patente.";
     return this.fraseDoDia();
+  },
+
+  /* ---- Desafio semanal ---- */
+  _segundaDaSemana() {
+    const d = new Date();
+    const dow = (d.getDay() + 6) % 7; // 0 = segunda
+    d.setDate(d.getDate() - dow);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  },
+  xpSemana() {
+    const g = this.estado();
+    const start = this._segundaDaSemana();
+    let soma = 0;
+    Object.entries(g.historico || {}).forEach(([k, v]) => { if (k >= start) soma += v; });
+    return soma;
+  },
+  desafioSemana() { // somente leitura (o prêmio é dado no addXP)
+    const alvo = this.metaAtual() * 5;
+    const xp = this.xpSemana();
+    return { alvo, xp, pct: Math.min(100, Math.round((xp / alvo) * 100)), feito: xp >= alvo, recompensa: Math.round(alvo * 0.3) };
   },
 
   /* ---- Histórico semanal (últimos 7 dias) ---- */
@@ -285,7 +319,7 @@ const Gamify = {
       desafio = this.registrarDesafio(materiaId);
       if (desafio && desafio.concluido) novas.push(...this.checarConquistas());
     }
-    return { xp, combo: this.combo, acertou, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, desafio, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze };
+    return { xp, combo: this.combo, acertou, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, desafio, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze, semanaConcluida: lvl.semanaConcluida, bonusSemana: lvl.bonusSemana };
   },
 
   flashcard(q) {
@@ -296,7 +330,7 @@ const Gamify = {
     const xp = q >= 4 ? 6 : (q === 3 ? 3 : 1);
     const lvl = this.addXP(xp);
     const novas = this.checarConquistas();
-    return { xp, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze };
+    return { xp, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze, semanaConcluida: lvl.semanaConcluida, bonusSemana: lvl.bonusSemana };
   },
 
   simulado(res, aprovado) {
@@ -312,7 +346,7 @@ const Gamify = {
     if (perc === 100) xp += 60;
     const lvl = this.addXP(xp);
     const novas = this.checarConquistas();
-    return { xp, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze };
+    return { xp, subiuNivel: lvl.subiuNivel, novaPatente: lvl.novaPatente, novas, metaBatidaAgora: lvl.metaBatidaAgora, ganhoFreeze: lvl.ganhoFreeze, semanaConcluida: lvl.semanaConcluida, bonusSemana: lvl.bonusSemana };
   },
 
   /* ---- Conquistas: retorna as recém-desbloqueadas ---- */

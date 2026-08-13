@@ -508,6 +508,55 @@ body {
   .topbar .nav { display: none; }   /* no mobile, navega pela barra inferior */
 }
 
+/* =====================================================================
+   TRILHA VISUAL (mapa de nós estilo Duolingo)
+   ===================================================================== */
+.trilha-path { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 0 6px; }
+.trilha-path::before { content: ""; position: absolute; top: 8px; bottom: 8px; left: 50%; width: 4px;
+  background: repeating-linear-gradient(var(--borda) 0 8px, transparent 8px 14px); transform: translateX(-50%); z-index: 0; }
+.no-wrap { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.no-wrap.no-esq { transform: translateX(-34px); }
+.no-wrap.no-dir { transform: translateX(34px); }
+.no { width: 62px; height: 62px; border-radius: 50%; border: none; cursor: pointer; position: relative;
+  display: grid; place-items: center; font-size: 26px; transition: transform .06s, border-bottom-width .06s; }
+.no .no-ic { line-height: 1; }
+.no.dom { background: linear-gradient(160deg, #f0d878, #d4af37); color: #0a1428; border-bottom: 5px solid #a5811f; }
+.no.atual { background: linear-gradient(160deg, #1e3a66, #16294f); border: 2px solid var(--dourado); border-bottom: 5px solid #a5811f;
+  color: var(--dourado-claro); animation: pulseGlow 1.6s infinite; }
+.no.livre { background: var(--azul-700); border-bottom: 5px solid var(--azul-800); color: var(--texto-suave); }
+.no.bloq { background: var(--azul-800); border-bottom: 5px solid #0a1428; color: #55688a; cursor: default; }
+.no:not(.bloq):active { transform: translateY(3px); border-bottom-width: 2px; }
+.no-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--dourado); color: #0a1428;
+  font-size: 9px; font-weight: 800; letter-spacing: .5px; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+.no-label { font-size: 11px; color: var(--texto-suave); max-width: 150px; text-align: center; line-height: 1.25; }
+.no-wrap.no-esq .no-label, .no-wrap.no-dir .no-label { max-width: 130px; }
+.shake { animation: shake .4s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+
+/* Resumo de fim de sessão */
+.sessao-fim { text-align: center; padding: 26px 16px 8px; }
+.sessao-emoji { font-size: 56px; animation: popCard .5s cubic-bezier(.2,1.3,.4,1); }
+.sessao-fim h1 { font-size: 28px; margin: 6px 0; }
+.sessao-fim.ok h1 { color: var(--verde); }
+.sessao-fim.quase h1 { color: var(--dourado-claro); }
+.sessao-sub { color: var(--texto-suave); }
+.sessao-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0 8px; }
+.stile { border-radius: 14px; padding: 14px 8px; text-align: center; border: 2px solid; background: var(--card-bg); }
+.stile-lb { font-size: 10px; letter-spacing: 1px; color: var(--texto-suave); font-weight: 700; }
+.stile-vl { font-size: 24px; font-weight: 800; margin-top: 4px; }
+.stile.amarelo { border-color: var(--dourado); } .stile.amarelo .stile-vl { color: var(--dourado-claro); }
+.stile.verde { border-color: var(--verde); } .stile.verde .stile-vl { color: #7ee2a0; }
+.stile.laranja { border-color: #f97316; } .stile.laranja .stile-vl { color: #ffb27a; }
+.stile.azul { border-color: #3b82f6; } .stile.azul .stile-vl { color: #8ab4ff; }
+.sessao-tempo { text-align: center; color: var(--texto-suave); font-size: 13px; margin-bottom: 12px; }
+
+/* Desafio semanal + toasts extras */
+.desafio-card.semana { border-left-color: var(--dourado); }
+.toast-conquista.semana { border-color: var(--dourado); }
+.toast-simples { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 140;
+  background: var(--azul-700); border: 1px solid var(--dourado); color: var(--texto); padding: 10px 16px;
+  border-radius: 22px; font-size: 13px; box-shadow: var(--sombra); animation: entraToast .3s; }
+
 /* ---------- RESPONSIVO ---------- */
 @media (max-width: 560px) {
   .hero h1 { font-size: 26px; }

@@ -164,6 +164,7 @@ const App = {
     }
     this.renderHud();
     if (r.metaBatidaAgora) this._toastMeta(r.ganhoFreeze);
+    if (r.semanaConcluida) setTimeout(() => this._toastSemana(r.bonusSemana), 500);
     if (r.desafio && r.desafio.concluido) this._toastDesafio(r.desafio.recompensa);
     if (r.subiuNivel || (r.desafio && r.desafio.subiuNivel)) this._modalLevelUp(r.novaPatente || (r.desafio && r.desafio.novaPatente));
     (r.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 400 + i * 900));
@@ -179,6 +180,18 @@ const App = {
     document.body.appendChild(el);
     setTimeout(() => el.classList.add("sai"), 3400);
     setTimeout(() => el.remove(), 4000);
+  },
+
+  _toastSemana(bonus) {
+    Som.levelup();
+    Confete.disparar(180);
+    const el = document.createElement("div");
+    el.className = "toast-conquista semana";
+    el.innerHTML = `<span class="tc-icone">🏆</span>
+      <span class="tc-txt"><strong>Desafio SEMANAL concluído!</strong><br>+${bonus} XP de bônus · +1 Protetor ❄️ · ${Gamify.frase()}</span>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add("sai"), 4000);
+    setTimeout(() => el.remove(), 4600);
   },
 
   _toastDesafio(recompensa) {
@@ -488,6 +501,7 @@ const App = {
         if (q >= 3) Som.acerto(); else Som.erro();
         this.renderHud();
         if (r.metaBatidaAgora) this._toastMeta(r.ganhoFreeze);
+        if (r.semanaConcluida) setTimeout(() => this._toastSemana(r.bonusSemana), 500);
         if (r.subiuNivel) this._modalLevelUp(r.novaPatente);
         (r.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 300 + i * 900));
         this._mostrarProximoCard(lista, idx + 1);
@@ -716,6 +730,7 @@ const App = {
     const gr = Gamify.simulado(res, aprovado);
     if (aprovado || perc === 100) Confete.disparar(perc === 100 ? 200 : 130);
     if (gr.metaBatidaAgora) setTimeout(() => this._toastMeta(gr.ganhoFreeze), 300);
+    if (gr.semanaConcluida) setTimeout(() => this._toastSemana(gr.bonusSemana), 700);
     if (gr.subiuNivel) setTimeout(() => this._modalLevelUp(gr.novaPatente), 300);
     (gr.novas || []).forEach((a, i) => setTimeout(() => this._toastConquista(a), 600 + i * 900));
 
@@ -956,29 +971,57 @@ const App = {
       ${ordenadas.map((s) => this._blocoAulasMateria(s)).join("")}
     `;
     this.el.querySelectorAll("[data-aula]").forEach((b) =>
-      b.addEventListener("click", () => this.telaAula(b.dataset.materia, parseInt(b.dataset.aula, 10))));
+      b.addEventListener("click", () => {
+        if (b.dataset.bloq) {
+          Som.erro();
+          b.classList.add("shake");
+          setTimeout(() => b.classList.remove("shake"), 420);
+          this._toastSimples("🔒 Conclua a aula anterior para desbloquear");
+          return;
+        }
+        this.telaAula(b.dataset.materia, parseInt(b.dataset.aula, 10));
+      }));
+  },
+
+  _toastSimples(txt) {
+    const el = document.createElement("div");
+    el.className = "toast-simples";
+    el.textContent = txt;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2200);
   },
 
   _blocoAulasMateria(s) {
     const aulas = AULAS[s.id] || [];
     const dom = aulas.filter((a) => Store.aulaInfo(a.id).dominada).length;
+    const pct = aulas.length ? Math.round((dom / aulas.length) * 100) : 0;
+    let atualMarcado = false;
+    const nodes = aulas.map((a, i) => {
+      const info = Store.aulaInfo(a.id);
+      const desbloq = i === 0 || Store.aulaInfo(aulas[i - 1].id).dominada;
+      let estado;
+      if (info.dominada) estado = "dom";
+      else if (desbloq && !atualMarcado) { estado = "atual"; atualMarcado = true; }
+      else if (desbloq) estado = "livre";
+      else estado = "bloq";
+      const ic = estado === "dom" ? "✅" : (estado === "bloq" ? "🔒" : "★");
+      const lado = i % 2 === 0 ? "no-esq" : "no-dir";
+      return `<div class="no-wrap ${lado}">
+        <button class="no ${estado}" data-aula="${i}" data-materia="${s.id}"${estado === "bloq" ? ' data-bloq="1"' : ""} title="${a.titulo}">
+          <span class="no-ic">${ic}</span>
+          ${estado === "atual" ? '<span class="no-badge">COMEÇAR</span>' : ""}
+        </button>
+        <span class="no-label">${a.titulo}</span>
+      </div>`;
+    }).join("");
     return `
       <div class="aulas-materia" style="--cor:${s.cor}">
         <div class="aulas-mat-cab">
           <span class="materia-nome">${s.nome}</span>
           <span class="aulas-mat-prog">${dom}/${aulas.length} ✅</span>
         </div>
-        <div class="aulas-trilha">
-          ${aulas.map((a, i) => {
-            const info = Store.aulaInfo(a.id);
-            const anterior = i === 0 || Store.aulaInfo(aulas[i - 1].id).dominada;
-            return `<button class="aula-item ${info.dominada ? "dom" : ""}" data-aula="${i}" data-materia="${s.id}">
-              <span class="aula-status">${info.dominada ? "✅" : (anterior ? "▶️" : "📖")}</span>
-              <span class="aula-titulo">${a.titulo}</span>
-              <span class="aula-meta">${a.min} min · ${a.questoes.length} questões${info.melhorPct ? ` · melhor ${info.melhorPct}%` : ""}</span>
-            </button>`;
-          }).join("")}
-        </div>
+        <div class="barra"><div class="barra-fill" style="width:${pct}%"></div></div>
+        <div class="trilha-path">${nodes}</div>
       </div>`;
   },
 
@@ -1024,7 +1067,8 @@ const App = {
     const qById = (id) => QUESTIONS.find((q) => q.id === id);
     const prova = aula.questoes.map(qById).filter(Boolean);
     const respostas = new Array(prova.length).fill(null);
-    let atual = 0, acertos = 0;
+    let atual = 0, acertos = 0, xpSessao = 0, maxCombo = 0;
+    const inicioT = Date.now();
 
     const render = () => {
       const q = prova[atual];
@@ -1064,6 +1108,7 @@ const App = {
           if (acertou) acertos++;
           Store.registrarQuestao(prova[atual], acertou);
           const r = Gamify.responder(acertou, prova[atual].materia);
+          xpSessao += r.xp; maxCombo = Math.max(maxCombo, r.combo || 0);
           this._feedbackResposta(alt, r);
           render();
         });
@@ -1078,18 +1123,26 @@ const App = {
     const finalizar = () => {
       const pct = Math.round((acertos / prova.length) * 100);
       const dominou = pct >= 70;
-      const info = Store.marcarAula(aula.id, pct);
-      if (dominou) { Confete.disparar(140); Som.levelup(); }
+      Store.marcarAula(aula.id, pct);
+      const seg = Math.round((Date.now() - inicioT) / 1000);
+      const tempo = seg < 60 ? `${seg}s` : `${Math.floor(seg / 60)}min ${seg % 60}s`;
+      if (dominou) { Confete.disparar(160); Som.levelup(); } else { Som.erro(); }
       this.el.innerHTML = `
-        <div class="resultado-simulado ${dominou ? "aprovado" : "reprovado"}">
-          <div class="nota-grande">${pct}%</div>
-          <p>${acertos} de ${prova.length} questões</p>
-          <p class="veredito">${dominou
-            ? "✅ Aula DOMINADA! Você provou que aprendeu. Siga para a próxima."
-            : "📖 Quase lá! Releia a aula com calma e refaça o teste — você precisa de 70%."}</p>
-          <p class="xp-ganho">💬 ${Gamify.frase()}</p>
+        <div class="sessao-fim ${dominou ? "ok" : "quase"}">
+          <div class="sessao-emoji">${dominou ? "🎉" : "💪"}</div>
+          <h1>${dominou ? "Aula dominada!" : "Quase lá!"}</h1>
+          <p class="sessao-sub">${dominou
+            ? "Você provou que aprendeu. Bora pra próxima!"
+            : "Releia a aula com calma e refaça — você precisa de 70%."}</p>
         </div>
-        <div class="acoes-materia">
+        <div class="sessao-tiles">
+          <div class="stile amarelo"><div class="stile-lb">XP GANHO</div><div class="stile-vl">+${xpSessao}</div></div>
+          <div class="stile ${dominou ? "verde" : "laranja"}"><div class="stile-lb">PRECISÃO</div><div class="stile-vl">${pct}%</div></div>
+          <div class="stile azul"><div class="stile-lb">MELHOR COMBO</div><div class="stile-vl">${maxCombo}⚡</div></div>
+        </div>
+        <div class="sessao-tempo">⏱️ ${tempo} · ${acertos}/${prova.length} acertos</div>
+        <div class="frase-mini" style="text-align:center">💬 ${Gamify.frase()}</div>
+        <div class="acoes-materia" style="justify-content:center">
           ${dominou ? `<button class="btn primario" id="proxima">Próxima aula →</button>` : `<button class="btn primario" id="reler">📖 Reler a aula</button>`}
           <button class="btn" id="voltar-trilha">Voltar à trilha</button>
         </div>`;
@@ -1176,6 +1229,9 @@ const App = {
       <h2 class="secao-titulo">🎯 Desafio de hoje</h2>
       ${this._cardDesafioPerfil()}
 
+      <h2 class="secao-titulo">🏆 Desafio semanal</h2>
+      ${this._cardDesafioSemana()}
+
       <h2 class="secao-titulo">🏅 Conquistas</h2>
       <div class="conquistas-grid">
         ${ACHIEVEMENTS.map((a) => {
@@ -1241,6 +1297,16 @@ const App = {
       <div class="barra"><div class="barra-fill" style="width:${pct}%"></div></div>
       <div class="desafio-prog">${des.progresso}/${des.alvo}</div>
       ${des.feito ? "" : `<button class="btn primario btn-pequeno" id="perfil-desafio">Ir agora →</button>`}
+    </div>`;
+  },
+
+  _cardDesafioSemana() {
+    const d = Gamify.desafioSemana();
+    return `<div class="desafio-card semana ${d.feito ? "feito" : ""}">
+      <div class="desafio-cab"><span>🏆 XP da semana</span>${d.feito ? '<span class="tag-ok">✔ concluído</span>' : `<span>+${d.recompensa} XP · ❄️</span>`}</div>
+      <div class="desafio-txt">Some <strong>${d.alvo} XP</strong> de segunda a domingo (${Gamify.metaAtual()} × 5 dias)</div>
+      <div class="barra"><div class="barra-fill" style="width:${d.pct}%"></div></div>
+      <div class="desafio-prog">${d.xp}/${d.alvo} XP</div>
     </div>`;
   },
 
