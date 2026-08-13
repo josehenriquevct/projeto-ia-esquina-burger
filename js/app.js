@@ -28,6 +28,7 @@ const App = {
       flashcards: () => this.telaFlashcards(),
       questoes: () => this.telaQuestoes(),
       erros: () => this.telaErros(),
+      aulas: () => this.telaAulas(),
       resumos: () => this.telaResumos(),
       simulado: () => this.telaSimulado(),
       desempenho: () => this.telaDesempenho(),
@@ -158,6 +159,13 @@ const App = {
     return s ? s.nome : id;
   },
 
+  _aulasTotal() { return Object.values(AULAS).reduce((a, arr) => a + arr.length, 0); },
+  _aulasDominadas() {
+    let n = 0;
+    Object.values(AULAS).forEach((arr) => arr.forEach((a) => { if (Store.aulaInfo(a.id).dominada) n++; }));
+    return n;
+  },
+
   /* ================================================================== */
   /* INÍCIO                                                              */
   /* ================================================================== */
@@ -215,6 +223,7 @@ const App = {
       </div>
 
       <div class="cards-grid">
+        ${this._cardResumo("📘", "Aulas dominadas", `${this._aulasDominadas()}/${this._aulasTotal()}`, "aprenda do zero + teste", "aulas", "ok")}
         ${this._cardResumo("📇", "Flashcards p/ revisar hoje", `${vencidos}`, `de ${FLASHCARDS.length}`, "flashcards", vencidos > 0 ? "alerta" : "ok")}
         ${this._cardResumo("❓", "Questões praticadas", `${respondidas}/${QUESTIONS.length}`, "banco no estilo AOCP", "questoes", "info")}
         ${this._cardResumo("📝", "Simulados feitos", `${simulados}`, "modelo real da prova", "simulado", "info")}
@@ -812,6 +821,186 @@ const App = {
       <thead><tr>${t.colunas.map((c) => `<th>${c}</th>`).join("")}</tr></thead>
       <tbody>${t.linhas.map((l) => `<tr>${l.map((v) => `<td>${v}</td>`).join("")}</tr>`).join("")}</tbody>
     </table></div>`;
+  },
+
+  /* ================================================================== */
+  /* AULAS — trilha de aprendizado (aprender + testar)                   */
+  /* ================================================================== */
+  telaAulas() {
+    const ordenadas = [...SUBJECTS].sort((a, b) => a.prioridade - b.prioridade || b.pontos - a.pontos)
+      .filter((s) => (AULAS[s.id] || []).length);
+    // progresso global
+    let total = 0, dom = 0;
+    ordenadas.forEach((s) => (AULAS[s.id] || []).forEach((a) => { total++; if (Store.aulaInfo(a.id).dominada) dom++; }));
+    const pctGlobal = total ? Math.round((dom / total) * 100) : 0;
+
+    this.el.innerHTML = `
+      <h1>📘 Trilha de aulas</h1>
+      <p class="sub">Aqui você <strong>aprende do zero</strong>: leia a aula e, no fim, faça o
+      <strong>teste de fixação</strong>. Acertando 70%+, a aula é marcada como <strong>dominada</strong> ✅.
+      Estude na ordem de prioridade — de cima para baixo.</p>
+
+      <div class="trilha-progresso">
+        <div class="barra"><div class="barra-fill" style="width:${pctGlobal}%"></div></div>
+        <span>${dom}/${total} aulas dominadas · ${pctGlobal}%</span>
+      </div>
+
+      <div class="frase-mini">💬 ${Gamify.frase()}</div>
+
+      ${ordenadas.map((s) => this._blocoAulasMateria(s)).join("")}
+    `;
+    this.el.querySelectorAll("[data-aula]").forEach((b) =>
+      b.addEventListener("click", () => this.telaAula(b.dataset.materia, parseInt(b.dataset.aula, 10))));
+  },
+
+  _blocoAulasMateria(s) {
+    const aulas = AULAS[s.id] || [];
+    const dom = aulas.filter((a) => Store.aulaInfo(a.id).dominada).length;
+    return `
+      <div class="aulas-materia" style="--cor:${s.cor}">
+        <div class="aulas-mat-cab">
+          <span class="materia-nome">${s.nome}</span>
+          <span class="aulas-mat-prog">${dom}/${aulas.length} ✅</span>
+        </div>
+        <div class="aulas-trilha">
+          ${aulas.map((a, i) => {
+            const info = Store.aulaInfo(a.id);
+            const anterior = i === 0 || Store.aulaInfo(aulas[i - 1].id).dominada;
+            return `<button class="aula-item ${info.dominada ? "dom" : ""}" data-aula="${i}" data-materia="${s.id}">
+              <span class="aula-status">${info.dominada ? "✅" : (anterior ? "▶️" : "📖")}</span>
+              <span class="aula-titulo">${a.titulo}</span>
+              <span class="aula-meta">${a.min} min · ${a.questoes.length} questões${info.melhorPct ? ` · melhor ${info.melhorPct}%` : ""}</span>
+            </button>`;
+          }).join("")}
+        </div>
+      </div>`;
+  },
+
+  telaAula(materiaId, idx) {
+    const aulas = AULAS[materiaId] || [];
+    const aula = aulas[idx];
+    if (!aula) return this.telaAulas();
+    const s = SUBJECTS.find((x) => x.id === materiaId);
+    const info = Store.aulaInfo(aula.id);
+
+    this.el.innerHTML = `
+      <button class="voltar" id="voltar">← Voltar às aulas</button>
+      <section class="hero compacto" style="--cor:${s.cor}">
+        <h1>${aula.titulo}</h1>
+        <p class="sub">${s.nome} · ${aula.min} min de leitura ${info.dominada ? "· ✅ dominada" : ""}</p>
+      </section>
+
+      <article class="aula-conteudo">
+        ${aula.blocos.map((b) => this._blocoAula(b)).join("")}
+      </article>
+
+      <div class="aula-cta">
+        <p>Leu com atenção? Agora prove que aprendeu. Você precisa de <strong>70%</strong> para dominar a aula.</p>
+        <button class="btn primario" id="testar">📝 Fazer o teste de fixação (${aula.questoes.length} questões)</button>
+      </div>
+    `;
+    document.getElementById("voltar").addEventListener("click", () => this.navegar("aulas"));
+    document.getElementById("testar").addEventListener("click", () => this._testeAula(materiaId, idx));
+  },
+
+  _blocoAula(b) {
+    if (b.h) return `<h3 class="aula-h">${b.h}</h3>`;
+    if (b.p) return `<p class="aula-p">${b.p}</p>`;
+    if (b.box) return `<div class="aula-box">💡 ${b.box}</div>`;
+    if (b.ex) return `<div class="aula-ex"><strong>Exemplo/macete:</strong> ${b.ex}</div>`;
+    if (b.lista) return `<ul class="aula-lista">${b.lista.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+    return "";
+  },
+
+  _testeAula(materiaId, idx) {
+    Gamify.resetCombo();
+    const aula = AULAS[materiaId][idx];
+    const qById = (id) => QUESTIONS.find((q) => q.id === id);
+    const prova = aula.questoes.map(qById).filter(Boolean);
+    const respostas = new Array(prova.length).fill(null);
+    let atual = 0, acertos = 0;
+
+    const render = () => {
+      const q = prova[atual];
+      const letras = ["A", "B", "C", "D", "E"];
+      const respondida = respostas[atual] !== null;
+      this.el.innerHTML = `
+        <div class="simulado-topo">
+          <span>Teste de fixação · ${atual + 1}/${prova.length}</span>
+          <span class="chip" style="--cor:${SUBJECTS.find((s) => s.id === materiaId).cor}">${aula.titulo}</span>
+        </div>
+        <div class="barra"><div class="barra-fill" style="width:${(atual / prova.length) * 100}%"></div></div>
+        <article class="questao destaque">
+          <p class="questao-enunciado">${q.enunciado}</p>
+          <div class="alternativas">
+            ${q.alternativas.map((a, ai) => {
+              let cls = "";
+              if (respondida) {
+                if (ai === q.correta) cls = "correta";
+                else if (ai === respostas[atual]) cls = "errada";
+              }
+              return `<button class="alt ${cls}" data-i="${ai}" ${respondida ? "disabled" : ""}>
+                <span class="alt-letra">${letras[ai]}</span><span class="alt-texto">${a}</span></button>`;
+            }).join("")}
+          </div>
+          ${respondida ? `<div class="explicacao"><strong>💡</strong> ${q.explicacao}</div>` : ""}
+        </article>
+        <div class="simulado-nav">
+          <span></span>
+          ${respondida ? `<button class="btn primario" id="prox">${atual === prova.length - 1 ? "Ver resultado" : "Próxima →"}</button>` : ""}
+        </div>`;
+      this.el.querySelectorAll(".alt").forEach((alt) => {
+        alt.addEventListener("click", () => {
+          if (respostas[atual] !== null) return;
+          const esc = parseInt(alt.dataset.i, 10);
+          respostas[atual] = esc;
+          const acertou = esc === prova[atual].correta;
+          if (acertou) acertos++;
+          Store.registrarQuestao(prova[atual], acertou);
+          const r = Gamify.responder(acertou, prova[atual].materia);
+          this._feedbackResposta(alt, r);
+          render();
+        });
+      });
+      const prox = document.getElementById("prox");
+      if (prox) prox.addEventListener("click", () => {
+        if (atual === prova.length - 1) finalizar();
+        else { atual++; render(); }
+      });
+    };
+
+    const finalizar = () => {
+      const pct = Math.round((acertos / prova.length) * 100);
+      const dominou = pct >= 70;
+      const info = Store.marcarAula(aula.id, pct);
+      if (dominou) { Confete.disparar(140); Som.levelup(); }
+      this.el.innerHTML = `
+        <div class="resultado-simulado ${dominou ? "aprovado" : "reprovado"}">
+          <div class="nota-grande">${pct}%</div>
+          <p>${acertos} de ${prova.length} questões</p>
+          <p class="veredito">${dominou
+            ? "✅ Aula DOMINADA! Você provou que aprendeu. Siga para a próxima."
+            : "📖 Quase lá! Releia a aula com calma e refaça o teste — você precisa de 70%."}</p>
+          <p class="xp-ganho">💬 ${Gamify.frase()}</p>
+        </div>
+        <div class="acoes-materia">
+          ${dominou ? `<button class="btn primario" id="proxima">Próxima aula →</button>` : `<button class="btn primario" id="reler">📖 Reler a aula</button>`}
+          <button class="btn" id="voltar-trilha">Voltar à trilha</button>
+        </div>`;
+      this.renderHud();
+      const volt = document.getElementById("voltar-trilha");
+      if (volt) volt.addEventListener("click", () => this.navegar("aulas"));
+      const rel = document.getElementById("reler");
+      if (rel) rel.addEventListener("click", () => this.telaAula(materiaId, idx));
+      const prx = document.getElementById("proxima");
+      if (prx) prx.addEventListener("click", () => {
+        const aulas = AULAS[materiaId];
+        if (idx + 1 < aulas.length) this.telaAula(materiaId, idx + 1);
+        else this.navegar("aulas");
+      });
+    };
+
+    render();
   },
 
   /* ================================================================== */

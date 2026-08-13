@@ -15,6 +15,7 @@ const Store = {
       cards: {},          // { cardId: estadoSRS }
       questoes: {},       // { questaoId: { tentativas, acertos, ultima } }
       erradas: {},        // { questaoId: true }  — última resposta foi errada
+      aulas: {},          // { aulaId: { dominada:bool, melhorPct } }
       simulados: [],      // [{ data, total, acertos, tempo, porMateria }]
       estatMateria: {},   // { materiaId: { respondidas, acertos } }
       criadoEm: Date.now(),
@@ -77,6 +78,22 @@ const Store = {
   idsErrados() {
     const d = this.carregar();
     return Object.keys(d.erradas || {});
+  },
+
+  // ---- Aulas (trilha de aprendizado) ----
+  marcarAula(aulaId, pct) {
+    const d = this.carregar();
+    if (!d.aulas) d.aulas = {};
+    const a = d.aulas[aulaId] || { dominada: false, melhorPct: 0 };
+    a.melhorPct = Math.max(a.melhorPct, pct);
+    if (pct >= 70) a.dominada = true;
+    d.aulas[aulaId] = a;
+    this.salvar();
+    return a;
+  },
+  aulaInfo(aulaId) {
+    const d = this.carregar();
+    return (d.aulas && d.aulas[aulaId]) || { dominada: false, melhorPct: 0 };
   },
 
   // ---- Simulados ----

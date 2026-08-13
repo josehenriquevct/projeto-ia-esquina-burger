@@ -42,6 +42,7 @@ python3 -m http.server 8000
 | Tela | O que faz |
 |------|-----------|
 | **Início** | Grade da prova, regra dos 60%/não zerar e matérias por prioridade |
+| **📘 Aulas** | Trilha para **aprender do zero**: 26 aulas com conteúdo + teste de fixação (70% domina) |
 | **Flashcards** | Revisão espaçada (52 cards) com avaliação (Errei / Difícil / Bom / Fácil) |
 | **Questões** | Banco de **140 questões** no estilo AOCP com gabarito comentado por alternativa |
 | **Resumos** | Teoria condensada por matéria (acordeão), no recorte que a banca cobra |
@@ -83,6 +84,7 @@ css/styles.css      → tema visual (azul-marinho + dourado)
 js/data.js          → matérias, blueprint da prova, TAF, redação, flashcards
 js/questions.js     → banco de 140 questões (estilo AOCP)
 js/resumos.js       → resumos de teoria por matéria
+js/aulas.js         → trilha de 26 aulas (conteúdo para aprender + teste de fixação)
 js/gamify.js        → gamificação (patentes, XP, streak, conquistas, sons, confete)
 js/srs.js           → motor de revisão espaçada (SM-2)
 js/storage.js       → persistência do progresso (localStorage)
