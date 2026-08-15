@@ -320,6 +320,48 @@ const App = {
     reader.readAsText(file);
   },
 
+  /* Painel do admin (só o e-mail admin, e protegido pelas regras do Firestore) */
+  telaAdmin() {
+    window.scrollTo(0, 0);
+    this.el.innerHTML = `
+      <button class="voltar" id="voltar-admin">← Voltar ao perfil</button>
+      <h1>👑 Painel do admin</h1>
+      <p class="sub">Uso do app (dados sincronizados na nuvem). Só você enxerga isto.</p>
+      <div id="admin-conteudo"><div class="vazio">Carregando…</div></div>`;
+    document.getElementById("voltar-admin").addEventListener("click", () => this.navegar("perfil"));
+    Cloud.listarUsuarios().then((lista) => {
+      lista.sort((a, b) => b.xp - a.xp);
+      const total = lista.length;
+      const totalXP = lista.reduce((a, u) => a + u.xp, 0);
+      const ativos = lista.filter((u) => u.atualizadoEm && (Date.now() - u.atualizadoEm) < 7 * 864e5).length;
+      const cont = document.getElementById("admin-conteudo");
+      if (!cont) return;
+      cont.innerHTML = `
+        <div class="stats-linha">
+          <div class="stat"><div class="stat-valor">${total}</div><div class="stat-legenda">usuários</div></div>
+          <div class="stat"><div class="stat-valor">${ativos}</div><div class="stat-legenda">ativos (7 dias)</div></div>
+          <div class="stat"><div class="stat-valor">${totalXP}</div><div class="stat-legenda">XP somado</div></div>
+        </div>
+        <h2 class="secao-titulo">🏆 Ranking</h2>
+        ${total ? `<div class="tabela-scroll"><table class="tabela">
+          <thead><tr><th>#</th><th>Aluno</th><th>Patente</th><th>XP</th><th>🔥</th><th>Quest.</th><th>Simul.</th><th>Últ. acesso</th></tr></thead>
+          <tbody>${lista.map((u, i) => {
+            const pat = (typeof Gamify !== "undefined") ? Gamify.patente({ xp: u.xp }).atual.nome : "";
+            const dt = u.atualizadoEm ? new Date(u.atualizadoEm).toLocaleDateString("pt-BR") : "—";
+            const nome = this._esc(u.nome || (u.email || "").split("@")[0] || "—");
+            return `<tr><td>${i + 1}</td><td>${nome}</td><td>${pat}</td><td><strong>${u.xp}</strong></td><td>${u.streak}</td><td>${u.respondidas}</td><td>${u.simulados}</td><td>${dt}</td></tr>`;
+          }).join("")}</tbody>
+        </table></div>` : `<div class="vazio">Ainda ninguém com progresso salvo na nuvem.</div>`}
+        <button class="btn" id="admin-refresh" style="margin-top:14px">↻ Atualizar</button>`;
+      const r = document.getElementById("admin-refresh");
+      if (r) r.addEventListener("click", () => this.telaAdmin());
+    }).catch((e) => {
+      const cont = document.getElementById("admin-conteudo");
+      if (cont) cont.innerHTML = `<div class="vazio">Não consegui carregar (${this._esc((e && e.message) || String(e))}).<br>
+        Confirme no Firestore a <strong>regra de admin</strong> (leitura da coleção pelo seu e-mail).</div>`;
+    });
+  },
+
   /* ================================================================== */
   /* INÍCIO                                                              */
   /* ================================================================== */
@@ -1227,6 +1269,8 @@ const App = {
     this.el.innerHTML = `
       <h2 class="secao-titulo" style="margin-top:4px">☁️ Conta</h2>
       ${this._cardConta()}
+      ${(typeof Cloud !== "undefined" && Cloud.ehAdmin && Cloud.ehAdmin())
+        ? `<button class="btn primario btn-pequeno" id="abrir-admin" style="margin-top:10px">👑 Painel do admin</button>` : ""}
 
       <div class="perfil-hero">
         <div class="perfil-brasao">${p.atual.simbolo}</div>
@@ -1340,6 +1384,8 @@ const App = {
       if (n !== null) { Gamify.definirNome(n.trim()); Som.acerto(); this.telaPerfil(); }
     });
     this._bindConta();
+    const adminBtn = document.getElementById("abrir-admin");
+    if (adminBtn) adminBtn.addEventListener("click", () => this.telaAdmin());
     document.getElementById("salvar-backup").addEventListener("click", () => this._salvarBackup());
     const inputBk = document.getElementById("arquivo-backup");
     document.getElementById("restaurar-backup").addEventListener("click", () => inputBk.click());

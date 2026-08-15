@@ -8,6 +8,8 @@
    local com o da nuvem e fica com o de MAIOR XP; em empate, o mais recente.
    Depois, cada alteração é enviada para a nuvem automaticamente (debounce).
    ========================================================================= */
+const ADMIN_EMAIL = "josehenrique0805vct@gmail.com"; // só este e-mail vê o painel/admin
+
 const Cloud = {
   _auth: null, _db: null, _user: null, _timer: null, _onAuth: null, _pronto: false, _sincronizando: false,
 
@@ -35,6 +37,33 @@ const Cloud = {
 
   usuario() { return this._user; },
   logado() { return !!this._user; },
+  ehAdmin() { return !!(this._user && this._user.email === ADMIN_EMAIL); },
+
+  /* Lista todos os usuários (só funciona logado como admin — garantido também
+     pelas regras do Firestore). Retorna resumo de cada um. */
+  async listarUsuarios() {
+    if (!this._db || !this.ehAdmin()) return [];
+    const snap = await this._db.collection("pmgo_usuarios").get();
+    const out = [];
+    snap.forEach((doc) => {
+      const d = doc.data() || {};
+      let prog = {};
+      try { prog = JSON.parse(d.progresso || "{}"); } catch (e) {}
+      const g = prog.gamify || {};
+      const est = prog.estatMateria ? Object.values(prog.estatMateria) : [];
+      const respondidas = est.reduce((a, m) => a + (m.respondidas || 0), 0);
+      out.push({
+        email: d.email || "—",
+        nome: g.nome || "",
+        xp: g.xp || 0,
+        streak: (g.streak && g.streak.count) || 0,
+        respondidas,
+        simulados: (prog.simulados && prog.simulados.length) || 0,
+        atualizadoEm: d.atualizadoEm || 0,
+      });
+    });
+    return out;
+  },
 
   cadastrar(email, senha) { return this._auth.createUserWithEmailAndPassword(email, senha); },
   entrar(email, senha) { return this._auth.signInWithEmailAndPassword(email, senha); },
