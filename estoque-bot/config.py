@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     # Claude
     anthropic_api_key: str
-    claude_model: str = "claude-opus-5"
+    claude_model: str = "claude-opus-5-5"
 
     # Áudio (opcional): se tiver OPENAI_API_KEY, transcreve áudio com Whisper
     openai_api_key: str | None = None
@@ -29,7 +29,22 @@ class Settings(BaseSettings):
 
     @property
     def allowed(self) -> set[str]:
-        return {p.strip() for p in self.allowed_phones.split(",") if p.strip()}
+        return {normalizar(p) for p in self.allowed_phones.split(",") if p.strip()}
+
+    def autorizado(self, numero: str) -> bool:
+        return normalizar(numero) in self.allowed
+
+
+def normalizar(numero: str) -> str:
+    """Só dígitos e sem o nono dígito de celular brasileiro.
+
+    O WhatsApp entrega muitos números do Brasil sem o 9 (ex.: 556499998888 em vez de
+    5564999998888), então comparamos sempre na forma sem o 9.
+    """
+    n = "".join(c for c in numero if c.isdigit())
+    if len(n) == 13 and n.startswith("55") and n[4] == "9":
+        n = n[:4] + n[5:]
+    return n
 
 
 settings = Settings()

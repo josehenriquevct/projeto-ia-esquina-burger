@@ -110,8 +110,8 @@ pm2 save && pm2 startup
 
 ## Custos e segurança
 
-- Cada mensagem gasta uma ou duas chamadas no Claude (`claude-opus-5`, effort baixo, prompt
-  cacheado). Pra baratear, troque `CLAUDE_MODEL` no `.env` por `claude-sonnet-5`.
+- Cada mensagem gasta uma ou duas chamadas no Claude (`claude-opus-5-5`, effort baixo, prompt
+  cacheado). Pra baratear, troque `CLAUDE_MODEL` no `.env` por `claude-sonnet-5-5`.
 - Só os números em `ALLOWED_PHONES` são atendidos. Grupos e status são ignorados.
 - Se expor o webhook na internet, defina `WEBHOOK_TOKEN` e mande o header
   `x-webhook-token` na config do webhook da Evolution.

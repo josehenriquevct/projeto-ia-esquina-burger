@@ -38,10 +38,15 @@ def _processar(data: dict) -> None:
     if key.get("fromMe"):
         return
     jid = key.get("remoteJid", "")
+    if jid.endswith("@lid"):
+        # WhatsApp novo esconde o número atrás de um "LID"; o número real vem num campo à parte
+        alt = key.get("remoteJidAlt") or key.get("senderPn") or data.get("senderPn") or ""
+        if alt.endswith("@s.whatsapp.net"):
+            jid = alt
     if not jid.endswith("@s.whatsapp.net"):
-        return  # ignora grupos e status
+        return  # ignora grupos, status e LID sem número
     numero = jid.split("@")[0]
-    if numero not in settings.allowed:
+    if not settings.autorizado(numero):
         log.warning("mensagem de número não autorizado: %s", numero)
         return
 
